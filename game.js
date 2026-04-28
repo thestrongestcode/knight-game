@@ -114,7 +114,7 @@ const playerBase = { damage: 30, maxHealth: 100, speed: 4 };
 const player = {
   x: canvas.width / 2.08,
   y: canvas.height / 1.35,
-  width: 50, height: 50,
+  width: 96, height: 96,
   speed: 4,
   maxSpeed: 13,
   color: "slategray",
