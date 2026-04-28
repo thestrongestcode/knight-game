@@ -9,7 +9,7 @@ canvas.height = window.innerHeight;
 // ============================================================
 // DEV FLAGS
 // ============================================================
-const DEV_IMMORTAL = true; // [dev] set true to disable death during testing
+const DEV_IMMORTAL = true;
 
 // ============================================================
 // ASSETS
@@ -28,7 +28,6 @@ const assets = {
   menuScreen:       "UserInterface/MenuScreen.png",
   shopPanel:        "UserInterface/ShopPanel.png",
 };
-
 const img = {};
 const imageLoads = Object.entries(assets).map(([key, src]) => {
   img[key] = new Image();
@@ -38,21 +37,21 @@ const imageLoads = Object.entries(assets).map(([key, src]) => {
 
 // ============================================================
 // SPRITE ANIMATION
-                                             
-// ============================================================
-// SPRITE ANIMATION
 // ============================================================
 const FRAME_H = 24;
 const spriteSheets = {};
 const spriteLoads = [
-  { key: "idle",   src: "Combat Ready Idle.png", frames: 5,  fw: 22 },
-  { key: "walk",   src: "Walk.png",              frames: 6,  fw: 22 },
-  { key: "run",    src: "Run.png",               frames: 6,  fw: 22 },
-  { key: "attack", src: "Attack 1.png",          frames: 8,  fw: 22 },
-  { key: "hit",    src: "Hit Front.png",         frames: 4,  fw: 22 },
-  { key: "dead",   src: "Fall.png",              frames: 4,  fw: 22 },
+  { key: "idle",   src: "Combat Ready Idle.png", frames: 5, fw: 22 },
+  { key: "walk",   src: "Walk.png",              frames: 6, fw: 22 },
+  { key: "run",    src: "Run.png",               frames: 6, fw: 22 },
+  { key: "attack", src: "Attack 1.png",          frames: 8, fw: 22 },
+  { key: "hit",    src: "Hit Front.png",         frames: 4, fw: 22 },
+  { key: "dead",   src: "Fall.png",              frames: 4, fw: 22 },
 ].map(({ key, src, frames, fw }) => {
-  
+  spriteSheets[key] = { img: new Image(), frames, fw };
+  spriteSheets[key].img.src = src;
+  return new Promise(res => spriteSheets[key].img.onload = res);
+});
 
 let currentAnim = "idle";
 let currentFrame = 0;
@@ -63,7 +62,6 @@ function updateAnimation(animName) {
   if (currentAnim !== animName) { currentAnim = animName; currentFrame = 0; frameTimer = 0; }
   if (++frameTimer >= FRAME_SPEED) { frameTimer = 0; currentFrame = (currentFrame + 1) % spriteSheets[currentAnim].frames; }
 }
-
 
 function drawKnight(x, y, facingLeft) {
   const sheet = spriteSheets[currentAnim];
@@ -78,11 +76,9 @@ function drawKnight(x, y, facingLeft) {
   }
   ctx.restore();
 }
-  img[key] = new Image();
-  img[key].src = src;
-  return new Promise(res => img[key].onload = res);
-});
 
+// ============================================================
+// BOSS ROOM HELPERS
 // ============================================================
 // BOSS ROOM HELPERS
 // [Warden spawns every 10 rooms, Archmage every 20 rooms.
