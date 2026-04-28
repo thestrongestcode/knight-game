@@ -31,8 +31,13 @@ const assets = {
 
 const img = {};
 const imageLoads = Object.entries(assets).map(([key, src]) => {
+  img[key] = new Image();
+  img[key].src = src;
+  return new Promise(res => img[key].onload = res);
+});
 }
-                                              // ============================================================
+                                             
+// ============================================================
 // SPRITE ANIMATION
 // ============================================================
 const FRAME_H = 24;
