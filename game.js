@@ -32,11 +32,7 @@ const img = {};
 const imageLoads = Object.entries(assets).map(([key, src]) => {
   img[key] = new Image();
   img[key].src = src;
-
-  return new Promise(res => {
-    img[key].onload = res;
-    img[key].onerror = res; // 👈 IMPORTANTE: evita que se quede colgado si falla una imagen
-  });
+  return new Promise(res => img[key].onload = res);
 });
 
 // ============================================================
@@ -61,13 +57,15 @@ let currentAnim = "idle";
 let currentFrame = 0;
 let frameTimer = 0;
 const FRAME_SPEED = 8;
+
+// ============================================================
 // BOSS ROOM HELPERS
 // [Warden spawns every 10 rooms, Archmage every 20 rooms.
 //  Archmage takes priority on multiples of 20.]
 // ============================================================
 function getBossType(room) {
-  if (room % 20 === 0) return "boss2"; // Archmage every 20 rooms
-  if (room % 10 === 0) return "boss1"; // Warden every 10 rooms
+  if (room % 20 === 0) return "boss2";
+  if (room % 10 === 0) return "boss1";
   return null;
 }
 
@@ -77,7 +75,7 @@ function isShopRoomNumber(room) { return room % 5 === 0 && !isBossRoomNumber(roo
 // ============================================================
 // GAME STATE
 // ============================================================
-let gameState = "menu"; // "menu" | "playing" | "dead"
+let gameState = "menu";
 let deathScreenTimer = 0;
 let roomNumber = 1;
 let roomIsCleared = false;
@@ -89,11 +87,9 @@ let isBossRoom = false;
 let shopOpen = false;
 let shopHealMessage = "";
 
-// [projectile arrays]
 const projectiles = [];
 const boss2Projectiles = [];
 
-// [dev control panel listener]
 const devChannel = new BroadcastChannel("dev_controls");
 devChannel.onmessage = (e) => {
   const { type, value } = e.data;
@@ -127,6 +123,10 @@ const player = {
   attackTimer: 0, attackCooldown: 0, attackHits: [],
   damage: 30
 };
+
+// ============================================================
+// SPRITE FUNCTIONS (defined after player)
+// ============================================================
 function updateAnimation(animName) {
   if (currentAnim !== animName) { currentAnim = animName; currentFrame = 0; frameTimer = 0; }
   if (++frameTimer >= FRAME_SPEED) { frameTimer = 0; currentFrame = (currentFrame + 1) % spriteSheets[currentAnim].frames; }
@@ -148,14 +148,12 @@ function drawKnight(x, y, facingLeft) {
 
 // ============================================================
 // KNOCKBACK CONFIG
-// Per enemy type: force = initial pixel push, decay = multiplier per frame (lower = stops faster)
-// Bosses are intentionally excluded — no knockback applied to boss entities.
 // ============================================================
 const knockbackConfig = {
-  speeder: { force: 28, decay: 0.72 }, // [speeder knockback] lightest enemy, flies back the most
-  common:  { force: 14, decay: 0.75 }, // [common knockback]  standard bounce
-  ranged:  { force: 12, decay: 0.74 }, // [ranged knockback]  similar to common, slightly less
-  tank:    { force:  4, decay: 0.65 }, // [tank knockback]    heavy, barely budges
+  speeder: { force: 28, decay: 0.72 },
+  common:  { force: 14, decay: 0.75 },
+  ranged:  { force: 12, decay: 0.74 },
+  tank:    { force:  4, decay: 0.65 },
 };
 
 // ============================================================
@@ -188,7 +186,6 @@ function getShopPrices() {
 // ============================================================
 let boss = null;
 
-// [boss1 charge state]
 let bossChargeState = "idle";
 let bossChargeTimer = 0;
 let bossChargeCooldown = 0;
@@ -196,44 +193,35 @@ let bossChargeTargetX = 0, bossChargeTargetY = 0;
 let bossTelegraphFlash = 0;
 let bossChargeDamageDealt = false;
 
-// [boss1 aoe state]
 let bossAoeState = "idle";
 let bossAoeRadius = 0;
-const bossAoeMaxRadius = 300; // [boss1 aoe size]
+const bossAoeMaxRadius = 300;
 let bossAoeCenterX = 0, bossAoeCenterY = 0;
 let bossAoeDamageDealt = false;
 
-// [boss1 timed minion wave]
 let boss1MinionTimer = 0;
-const BOSS1_MINION_INTERVAL = 400; // [boss1 minion wave interval] ~15 sec at 60fps
+const BOSS1_MINION_INTERVAL = 400;
 
-// [boss2 attack state]
 let boss2ShootTimer = 0;
-let boss2ShootCooldown = 160;  // [boss2 shoot cooldown] frames
+let boss2ShootCooldown = 160;
 let boss2RainTimer = 0;
-let boss2RainCooldown = 240;   // [boss2 rain cooldown] 4 sec at 60fps
+let boss2RainCooldown = 240;
 let boss2RainWarnings = [];
-let boss2BeamState = "idle";   // "idle" | "windup" | "firing" | "stunned"
+let boss2BeamState = "idle";
 let boss2BeamTimer = 0;
 let boss2BeamCooldown = 0;
 let boss2BeamX = 0, boss2BeamY = 0;
 let boss2BeamDamageDealt = false;
-const BOSS2_RAIN_RADIUS = 100; // [magic rain radius]
+const BOSS2_RAIN_RADIUS = 100;
 
 function getChargeCooldown() {
   const enraged = boss && boss.health <= boss.maxHealth * 0.25;
   return Math.floor(Math.random() * (enraged ? 100 : 140)) + (enraged ? 40 : 80);
 }
 
-// ============================================================
-// BOSS ENCOUNTER COUNTERS
-// 0-based: n=0 on first encounter, n=1 on second, etc.
-// Counter is read INSIDE createBoss, then incremented AFTER in advanceRoom.
-// ============================================================
-let boss1Count = 0; // [warden encounter index, 0-based]
-let boss2Count = 0; // [archmage encounter index, 0-based]
+let boss1Count = 0;
+let boss2Count = 0;
 
-// [boss factory] — bossType: "boss1" | "boss2"
 function createBoss(bossType) {
   const base = {
     x: canvas.width / 2 - 60,
@@ -243,38 +231,33 @@ function createBoss(bossType) {
   };
 
   if (bossType === "boss1") {
-    const n = boss1Count; // [0 = first Warden, 1 = second, ...]
-    // [boss1 HP] ~20-100 hits at expected ATK. Formula: 1400 * 4^n
-    // n=0:1 400 | n=1:5 600 | n=2:22 400 | n=3:89 600 | n=4:358 400
+    const n = boss1Count;
     const hp  = Math.floor(1400 * Math.pow(4, n));
-    const spd = Math.min(0.8 + n * 0.55, 5.0); // [boss1 speed] cap 5.0
+    const spd = Math.min(0.8 + n * 0.55, 5.0);
     return {
       ...base,
       speed: spd, baseSpeed: spd,
       color: "#8B0000",
       health: hp, maxHealth: hp,
-      damage:     1.5 + n * 2.5,   // [boss1 contact damage per frame]
-      dashDamage: 0.35 + n * 0.07, // [boss1 dash damage] % of player max HP
-      aoeDamage:  0.22 + n * 0.05, // [boss1 aoe damage]  % of player max HP
+      damage:     1.5 + n * 2.5,
+      dashDamage: 0.35 + n * 0.07,
+      aoeDamage:  0.22 + n * 0.05,
       coinDrop:   30 + n * 20
     };
   }
 
-  // boss2 — Archmage
-  const n = boss2Count; // [0 = first Archmage, 1 = second, ...]
-  // [boss2 HP] ~33-200 hits at expected ATK. Formula: 5000 * 3.8^n
-  // n=0:5 000 | n=1:19 000 | n=2:72 200 | n=3:274 360 | n=4:1 042 568
+  const n = boss2Count;
   const hp  = Math.floor(5000 * Math.pow(3.8, n));
-  const spd = Math.min(1.2 + n * 0.65, 5.5); // [boss2 speed] cap 5.5
+  const spd = Math.min(1.2 + n * 0.65, 5.5);
   return {
     ...base,
     speed: spd, baseSpeed: spd,
     color: "#4400aa",
     health: hp, maxHealth: hp,
-    damage:           1.2 + n * 2.0,   // [boss2 contact damage per frame]
-    projectileDamage: 10  + n * 18,    // [boss2 projectile damage]
-    rainDamage:       0.6  + n * 0.5,  // [boss2 rain damage per frame inside circle]
-    beamDamage:       0.75 + n * 0.10, // [boss2 beam damage] % of player max HP
+    damage:           1.2 + n * 2.0,
+    projectileDamage: 10  + n * 18,
+    rainDamage:       0.6  + n * 0.5,
+    beamDamage:       0.75 + n * 0.10,
     coinDrop:         45 + n * 30
   };
 }
@@ -299,13 +282,13 @@ function spawnEnemies() {
   const list = Object.entries(counts)
     .flatMap(([type, n]) => Array(n).fill(type))
     .sort(() => Math.random() - 0.5)
-    .slice(0, 10); // [enemy total cap]
+    .slice(0, 10);
 
   const configs = {
     common:  { width: 40, height: 40, speedMult: 1,    hpMult: 1,   color: "crimson"  },
-    tank:    { width: 55, height: 55, speedMult: 0.5,  hpMult: 3,   color: "#8B0000"  }, // [tank config]
-    speeder: { width: 25, height: 25, speedMult: 2,    hpMult: 0.3, color: "#ff8800"  }, // [speeder config]
-    ranged:  { width: 35, height: 35, speedMult: 0.8,  hpMult: 0.9, color: "#66ccff"  }  // [ranged config]
+    tank:    { width: 55, height: 55, speedMult: 0.5,  hpMult: 3,   color: "#8B0000"  },
+    speeder: { width: 25, height: 25, speedMult: 2,    hpMult: 0.3, color: "#ff8800"  },
+    ranged:  { width: 35, height: 35, speedMult: 0.8,  hpMult: 0.9, color: "#66ccff"  }
   };
 
   list.forEach(type => {
@@ -323,20 +306,20 @@ function spawnEnemies() {
       color: c.color,
       health: hp * c.hpMult,
       type,
-      knockbackVx: 0, knockbackVy: 0 // [knockback velocity, initialised to 0]
+      knockbackVx: 0, knockbackVy: 0
     };
-    if (type === "ranged") { enemy.shootTimer = 0; enemy.shootCooldown = 150; } // [ranged shoot cooldown]
+    if (type === "ranged") { enemy.shootTimer = 0; enemy.shootCooldown = 150; }
     enemies.push(enemy);
   });
 }
 
 // ============================================================
-// DOOR / EXIT (hoisted — reused in update + render)
+// DOOR / EXIT
 // ============================================================
 function getExitDoor() {
   return isBossRoom
-    ? { x: canvas.width / 2 - 60, y: 150, width: 120, height: 40 }  // [boss room door y]
-    : { x: canvas.width / 2 - 60, y: 120, width: 120, height: 40 }; // [normal room door y]
+    ? { x: canvas.width / 2 - 60, y: 150, width: 120, height: 40 }
+    : { x: canvas.width / 2 - 60, y: 120, width: 120, height: 40 };
 }
 
 // ============================================================
@@ -349,7 +332,7 @@ function resetBossState() {
   bossAoeState = "idle";    bossAoeRadius = 0;
   bossAoeDamageDealt = false;
   boss2BeamState = "idle";  boss2BeamTimer = boss2ShootTimer = 0;
-  boss2RainTimer = boss2RainCooldown;     // [start at full cooldown to avoid instant trigger]
+  boss2RainTimer = boss2RainCooldown;
   boss1MinionTimer = BOSS1_MINION_INTERVAL;
   boss2BeamDamageDealt = false;
   boss2Projectiles.length = 0;
@@ -364,9 +347,8 @@ function advanceRoom() {
   roomIsCleared = false;
   shopOpen = false;
   shopHealMessage = "";
-  resetBossState(); // also clears boss2Projectiles
+  resetBossState();
 
-  // [boss / shop flags derived from room number helpers]
   isBossRoom = isBossRoomNumber(roomNumber);
   isShopRoom = isShopRoomNumber(roomNumber);
 
@@ -378,11 +360,9 @@ function advanceRoom() {
   }
 
   if (isBossRoom) {
-    // [boss schedule] multiples of 20 = Archmage, other multiples of 10 = Warden
-    // createBoss reads the counter BEFORE increment so n is 0-based correctly.
     const bossType = getBossType(roomNumber);
     boss = createBoss(bossType);
-    if (bossType === "boss1") boss1Count++; // [increment AFTER create]
+    if (bossType === "boss1") boss1Count++;
     if (bossType === "boss2") boss2Count++;
     bossChargeCooldown = 60;
     boss2BeamCooldown  = 180;
@@ -401,8 +381,8 @@ function restartGame() {
   player.x = canvas.width / 2.08;
   player.y = canvas.height / 1.35;
   player.health = player.maxHealth = 100;
-  player.damage = 30;  // [player starting damage]
-  player.speed  = 4;   // [player starting speed]
+  player.damage = 30;
+  player.speed  = 4;
   player.attackTimer = player.attackCooldown = 0;
   player.attackHits = [];
 
@@ -411,7 +391,7 @@ function restartGame() {
   shopHealMessage = "";
   coinCount = 0;
   fading = false; fadeAlpha = 0;
-  boss1Count = boss2Count = 0; // [reset boss encounter counters on restart]
+  boss1Count = boss2Count = 0;
   resetBossState();
 
   enemies.length = coins.length = projectiles.length = 0;
@@ -436,9 +416,9 @@ window.addEventListener("keydown", e => {
 window.addEventListener("keydown", e => {
   if (!shopOpen) return;
   const { damagePrice, healthPrice, speedPrice } = getShopPrices();
-  if (e.key === "1" && coinCount >= damagePrice) { coinCount -= damagePrice; player.damage = Math.floor(player.damage * 1.25); }           // [shop damage multiplier]
-  if (e.key === "2" && coinCount >= healthPrice) { coinCount -= healthPrice; player.maxHealth = Math.floor(player.maxHealth * 1.25); player.health = player.maxHealth; } // [shop health multiplier]
-  if (e.key === "3" && coinCount >= speedPrice)  { coinCount -= speedPrice;  player.speed = Math.min(parseFloat((player.speed * 1.25).toFixed(2)), player.maxSpeed); }    // [shop speed multiplier]
+  if (e.key === "1" && coinCount >= damagePrice) { coinCount -= damagePrice; player.damage = Math.floor(player.damage * 1.25); }
+  if (e.key === "2" && coinCount >= healthPrice) { coinCount -= healthPrice; player.maxHealth = Math.floor(player.maxHealth * 1.25); player.health = player.maxHealth; }
+  if (e.key === "3" && coinCount >= speedPrice)  { coinCount -= speedPrice;  player.speed = Math.min(parseFloat((player.speed * 1.25).toFixed(2)), player.maxSpeed); }
 });
 
 // ============================================================
@@ -470,7 +450,6 @@ function update() {
     if (keys["a"] || keys["ArrowLeft"])  player.x -= player.speed;
     if (keys["d"] || keys["ArrowRight"]) player.x += player.speed;
 
-    // [wall bounds]
     if (isBossRoom) {
       player.x = Math.max(160, Math.min(canvas.width  - player.width  - 160, player.x));
       player.y = Math.max(180, Math.min(canvas.height - player.height - 80,  player.y));
@@ -502,7 +481,6 @@ function update() {
     if (roomIsCleared && rectsOverlap(player, getExitDoor())) { fading = true; fadeDirection = "out"; }
   }
 
-  // [fade transition]
   if (fading) {
     if (fadeDirection === "out") {
       fadeAlpha += 0.05;
@@ -519,7 +497,6 @@ function update() {
 // ============================================================
 function updateEnemies() {
   enemies.forEach(enemy => {
-    // [apply and decay knockback velocity before any other movement]
     if (enemy.knockbackVx) {
       enemy.x += enemy.knockbackVx;
       enemy.knockbackVx *= knockbackConfig[enemy.type]?.decay ?? 0.75;
@@ -535,7 +512,7 @@ function updateEnemies() {
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
     if (enemy.type === "ranged") {
-      const pref = 300; // [ranged preferred distance]
+      const pref = 300;
       if (dist > pref + 40) {
         enemy.x += (dx / dist) * enemy.speed;
         enemy.y += (dy / dist) * enemy.speed;
@@ -548,7 +525,7 @@ function updateEnemies() {
       if (--enemy.shootTimer <= 0) {
         enemy.shootTimer = enemy.shootCooldown;
         projectiles.push({ x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2,
-          vx: (dx / dist) * 4, vy: (dy / dist) * 4,    // [ranged projectile speed]
+          vx: (dx / dist) * 4, vy: (dy / dist) * 4,
           width: 10, height: 10 });
       }
     } else {
@@ -557,9 +534,9 @@ function updateEnemies() {
     }
 
     if (enemy.type !== "ranged" && rectsOverlap(player, enemy)) {
-      const dmg = enemy.type === "tank"    ? 1.5 + roomNumber * 0.2   // [tank damage]
-                : enemy.type === "speeder" ? 0.2 + roomNumber * 0.05  // [speeder damage]
-                :                            0.5 + roomNumber * 0.1;  // [common damage]
+      const dmg = enemy.type === "tank"    ? 1.5 + roomNumber * 0.2
+                : enemy.type === "speeder" ? 0.2 + roomNumber * 0.05
+                :                            0.5 + roomNumber * 0.1;
       contactDamage(enemy, dmg);
     }
   });
@@ -568,7 +545,7 @@ function updateEnemies() {
     const p = projectiles[i];
     p.x += p.vx; p.y += p.vy;
     if (p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) { projectiles.splice(i, 1); continue; }
-    if (rectsOverlap(p, player)) { player.health -= 8 + roomNumber * 0.4; projectiles.splice(i, 1); } // [ranged projectile damage]
+    if (rectsOverlap(p, player)) { player.health -= 8 + roomNumber * 0.4; projectiles.splice(i, 1); }
   }
 }
 
@@ -581,11 +558,10 @@ function updateBoss() {
   if (boss.type === "boss1") updateBoss1();
   if (boss.type === "boss2") updateBoss2();
 
-  // [boss1 timed minion waves] every ~15 sec, 8–15 minions
   if (boss.type === "boss1" && boss.health > 0) {
     if (--boss1MinionTimer <= 0) {
       boss1MinionTimer = BOSS1_MINION_INTERVAL;
-      const count = Math.floor(Math.random() * 8) + 8; // [boss1 minion wave count] 8–15
+      const count = Math.floor(Math.random() * 8) + 8;
       for (let i = 0; i < count; i++) {
         let ex, ey, attempts = 0;
         do {
@@ -595,24 +571,23 @@ function updateBoss() {
         enemies.push({ x: ex, y: ey, width: 25, height: 25,
           speed: (1.5 + roomNumber * 0.1) * 0.5,
           color: "#cc4400", health: 20 + roomNumber * 3, type: "common",
-          knockbackVx: 0, knockbackVy: 0 }); // [minions also have knockback fields]
+          knockbackVx: 0, knockbackVy: 0 });
       }
     }
   }
 
-  // [boss death — coin drop + heal + clear]
   if (boss.health <= 0) {
     for (let i = 0; i < boss.coinDrop; i++)
       coins.push({ x: boss.x + Math.random() * boss.width, y: boss.y + Math.random() * boss.height, width: 10, height: 10 });
     player.health = player.maxHealth;
-    resetBossState(); // clears boss, boss2Projectiles, warnings, etc.
+    resetBossState();
     roomIsCleared = true;
   }
 }
 
 function updateBoss1() {
   const enraged = boss.health <= boss.maxHealth * 0.5;
-  if (enraged) { boss.speed = boss.baseSpeed * 4; boss.damage = 3; boss.color = "#ff0000"; } // [boss1 enraged]
+  if (enraged) { boss.speed = boss.baseSpeed * 4; boss.damage = 3; boss.color = "#ff0000"; }
 
   if (bossChargeState === "idle" && bossAoeState === "idle") {
     if (--bossChargeCooldown <= 0) {
@@ -640,7 +615,7 @@ function updateBoss1() {
   if (bossChargeState === "dashing") {
     const dx = bossChargeTargetX - boss.x, dy = bossChargeTargetY - boss.y;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-    boss.x += (dx / dist) * 60; boss.y += (dy / dist) * 60; // [boss1 dash speed]
+    boss.x += (dx / dist) * 60; boss.y += (dy / dist) * 60;
     if (!bossChargeDamageDealt && rectsOverlap(player, boss)) {
       player.health -= player.maxHealth * boss.dashDamage;
       bossChargeDamageDealt = true; bossChargeState = "cooldown"; bossChargeTimer = 40;
@@ -651,7 +626,7 @@ function updateBoss1() {
   if (bossChargeState === "cooldown" && --bossChargeTimer <= 0) bossChargeState = "idle";
 
   if (bossAoeState === "expanding") {
-    bossAoeRadius += 4; // [boss1 aoe expansion speed]
+    bossAoeRadius += 4;
     if (!bossAoeDamageDealt) {
       const px = player.x + player.width / 2, py = player.y + player.height / 2;
       const d = Math.sqrt((px - bossAoeCenterX) ** 2 + (py - bossAoeCenterY) ** 2);
@@ -676,12 +651,12 @@ function updateBoss1() {
 
 function updateBoss2() {
   const enraged = boss.health <= boss.maxHealth * 0.5;
-  if (enraged) { boss.speed = boss.baseSpeed * 2; boss.damage = 2.5; boss.color = "#7700ff"; } // [boss2 enraged]
+  if (enraged) { boss.speed = boss.baseSpeed * 2; boss.damage = 2.5; boss.color = "#7700ff"; }
 
   const dx = player.x + player.width / 2 - (boss.x + boss.width / 2);
   const dy = player.y + player.height / 2 - (boss.y + boss.height / 2);
   const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-  const pref = 300; // [boss2 preferred distance]
+  const pref = 300;
 
   if (boss2BeamState === "idle" || boss2BeamState === "stunned") {
     if (dist > pref + 50)      { boss.x += (dx / dist) * boss.speed; boss.y += (dy / dist) * boss.speed; }
@@ -692,54 +667,50 @@ function updateBoss2() {
 
   if (rectsOverlap(player, boss)) contactDamage(boss, boss.damage);
 
-  // [boss2 spread shot]
   if (boss2BeamState !== "firing" && boss2BeamState !== "windup" && --boss2ShootTimer <= 0) {
     boss2ShootTimer = boss2ShootCooldown;
     const base = Math.atan2(dy, dx);
-    [-0.2, 0, 0.2].forEach(offset => { // [boss2 spread angles]
+    [-0.2, 0, 0.2].forEach(offset => {
       const a = base + offset;
       boss2Projectiles.push({ x: boss.x + boss.width / 2, y: boss.y + boss.height / 2,
-        vx: Math.cos(a) * 5, vy: Math.sin(a) * 5, // [boss2 projectile speed]
+        vx: Math.cos(a) * 5, vy: Math.sin(a) * 5,
         width: 22, height: 22, type: "normal" });
     });
   }
 
-  // [magic rain trigger]
   if (--boss2RainTimer <= 0) {
     boss2RainTimer = boss2RainCooldown;
-    const count = 5 + Math.floor(roomNumber / 10); // [magic rain count]
+    const count = 5 + Math.floor(roomNumber / 10);
     for (let i = 0; i < count; i++)
       boss2RainWarnings.push({
         x: Math.random() * (canvas.width  - 550) + 275,
         y: Math.random() * (canvas.height - 340) + 180,
-        timer: 30, radius: BOSS2_RAIN_RADIUS // [magic rain warning duration] 0.5 sec
+        timer: 30, radius: BOSS2_RAIN_RADIUS
       });
   }
 
-  // [magic rain warnings tick + land]
   for (let i = boss2RainWarnings.length - 1; i >= 0; i--) {
     if (--boss2RainWarnings[i].timer <= 0) {
       const w = boss2RainWarnings[i];
       boss2Projectiles.push({ x: w.x, y: w.y, vx: 0, vy: 0,
         width: w.radius * 2, height: w.radius * 2,
-        type: "rain", linger: 40 }); // [magic rain linger duration] frames
+        type: "rain", linger: 40 });
       boss2RainWarnings.splice(i, 1);
     }
   }
 
-  // [beam cooldown / windup / fire / stun cycle]
   if (boss2BeamState === "idle" && --boss2BeamCooldown <= 0) {
-    boss2BeamState = "windup"; boss2BeamTimer = 45; // [beam windup duration] frames
+    boss2BeamState = "windup"; boss2BeamTimer = 45;
     boss2BeamX = player.x + player.width / 2;
     boss2BeamY = player.y + player.height / 2;
     boss2BeamDamageDealt = false;
   }
   if (boss2BeamState === "windup" && --boss2BeamTimer <= 0) {
-    boss2BeamState = "firing"; boss2BeamTimer = 20; // [beam fire duration] frames
+    boss2BeamState = "firing"; boss2BeamTimer = 20;
   }
   if (boss2BeamState === "firing") {
     if (!boss2BeamDamageDealt) {
-      const beamW = boss.width * 1.5; // [beam width]
+      const beamW = boss.width * 1.5;
       const bcx = boss.x + boss.width / 2, bcy = boss.y + boss.height / 2;
       const angle = Math.atan2(boss2BeamY - bcy, boss2BeamX - bcx);
       const pdx = player.x + player.width / 2 - bcx;
@@ -753,25 +724,24 @@ function updateBoss2() {
     }
     if (--boss2BeamTimer <= 0) {
       boss2BeamState = "stunned";
-      boss2BeamTimer    = 180;                        // [beam stun duration] 3 sec
-      boss2BeamCooldown = enraged ? 300 : 480;        // [beam cooldown]
+      boss2BeamTimer    = 180;
+      boss2BeamCooldown = enraged ? 300 : 480;
     }
   }
   if (boss2BeamState === "stunned" && --boss2BeamTimer <= 0) boss2BeamState = "idle";
 
-  // [boss2 projectile movement + damage]
   for (let i = boss2Projectiles.length - 1; i >= 0; i--) {
     const p = boss2Projectiles[i];
     if (p.type === "rain") {
       const d = Math.sqrt((player.x + player.width / 2 - p.x) ** 2 + (player.y + player.height / 2 - p.y) ** 2);
-      if (d < BOSS2_RAIN_RADIUS + 25) player.health -= boss.rainDamage + roomNumber * 0.05; // [boss2 rain damage]
+      if (d < BOSS2_RAIN_RADIUS + 25) player.health -= boss.rainDamage + roomNumber * 0.05;
       if (--p.linger <= 0) boss2Projectiles.splice(i, 1);
       continue;
     }
     p.x += p.vx; p.y += p.vy;
     if (p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) { boss2Projectiles.splice(i, 1); continue; }
     if (rectsOverlap(p, player)) {
-      player.health -= boss.projectileDamage + roomNumber * 0.3; // [boss2 projectile damage]
+      player.health -= boss.projectileDamage + roomNumber * 0.3;
       boss2Projectiles.splice(i, 1);
     }
   }
@@ -787,12 +757,13 @@ function updateAttack() {
   if (keys["d"] || keys["ArrowRight"]) player.facing = "right";
 
   if ((keys[" "] || keys["click"]) && player.attackCooldown <= 0) {
-    player.attackTimer    = 8;  // [attack duration]
-    player.attackCooldown = 18; // [attack cooldown]
+    player.attackTimer    = 8;
+    player.attackCooldown = 18;
     player.attackHits = [];
   }
   if (player.attackTimer    > 0) player.attackTimer--;
   if (player.attackCooldown > 0) player.attackCooldown--;
+
   const animName = player.attackTimer > 0 ? "attack"
     : (keys["w"] || keys["s"] || keys["a"] || keys["d"] || keys["ArrowUp"] || keys["ArrowDown"] || keys["ArrowLeft"] || keys["ArrowRight"]) ? (player.speed > 6 ? "run" : "walk")
     : "idle";
@@ -805,8 +776,6 @@ function updateAttack() {
       if (rectsOverlap(attackBox, enemy) && !player.attackHits.includes(i)) {
         enemy.health -= player.damage;
         player.attackHits.push(i);
-
-        // [apply knockback — direction away from player, force varies by enemy type]
         const kb = knockbackConfig[enemy.type] ?? knockbackConfig.common;
         const kbDx = enemy.x - player.x, kbDy = enemy.y - player.y;
         const kbDist = Math.sqrt(kbDx * kbDx + kbDy * kbDy) || 1;
@@ -815,7 +784,6 @@ function updateAttack() {
       }
     });
 
-    // [bosses intentionally receive no knockback — they are too large to be pushed]
     if (boss && rectsOverlap(attackBox, boss) && !player.attackHits.includes("boss")) {
       boss.health -= player.damage;
       player.attackHits.push("boss");
@@ -850,7 +818,7 @@ function updateCoins() {
   const px = player.x + player.width / 2, py = player.y + player.height / 2;
   for (let i = coins.length - 1; i >= 0; i--) {
     const d = Math.sqrt((coins[i].x + 5 - px) ** 2 + (coins[i].y + 5 - py) ** 2);
-    if (d < 60) { coinCount++; coins.splice(i, 1); } // [coin pickup radius]
+    if (d < 60) { coinCount++; coins.splice(i, 1); }
   }
 }
 
@@ -871,7 +839,6 @@ function render() {
     return;
   }
 
-  // [background — pick based on room type, boss type, and cleared state]
   let bgImage;
   const bossType = getBossType(roomNumber);
   if (bossType === "boss1") bgImage = roomIsCleared ? img.bossRoom1Cleared : img.bossRoom1;
@@ -879,8 +846,9 @@ function render() {
   else bgImage = roomIsCleared ? img.roomCleared : img.roomBackground;
   ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
 
- // [draw player]
+  // [draw player]
   drawKnight(player.x, player.y, player.facing === "left");
+
   enemies.forEach(e => { ctx.fillStyle = e.color; ctx.fillRect(e.x, e.y, e.width, e.height); });
 
   if (boss) renderBoss();
@@ -965,7 +933,7 @@ function renderBoss() {
         ctx.fillStyle = "rgba(0,150,255,0.5)"; ctx.fill();
         ctx.strokeStyle = "#66ccff"; ctx.lineWidth = 2; ctx.stroke();
       } else {
-        ctx.arc(p.x, p.y, 14, 0, Math.PI * 2); // [boss2 projectile render size]
+        ctx.arc(p.x, p.y, 14, 0, Math.PI * 2);
         ctx.fillStyle = "#cc88ff"; ctx.fill();
       }
     });
@@ -980,7 +948,7 @@ function renderBoss() {
     if (boss2BeamState === "firing") {
       const bcx = boss.x + boss.width / 2, bcy = boss.y + boss.height / 2;
       const angle = Math.atan2(boss2BeamY - bcy, boss2BeamX - bcx);
-      const beamW = boss.width * 1.5; // [beam render width]
+      const beamW = boss.width * 1.5;
       ctx.save(); ctx.translate(bcx, bcy); ctx.rotate(angle);
       ctx.fillStyle = "rgba(180,80,255,0.3)";   ctx.fillRect(0, -beamW,           2000, beamW * 2);
       ctx.fillStyle = "rgba(220,150,255,0.9)";  ctx.fillRect(0, -beamW / 3,       2000, (beamW / 3) * 2);
@@ -1013,9 +981,9 @@ function renderHUD() {
   const base = playerBase, sx = canvas.width - 220, sy = 20;
   ctx.font = "bold 15px Courier New";
   const pct = (val, b) => { const p = Math.round(((val - b) / b) * 100); return p > 0 ? ` (+${p}%)` : ""; };
-  ctx.fillStyle = "#ff6644"; ctx.fillText("ATK: " + player.damage             + pct(player.damage,    base.damage),     sx, sy + 20);
-  ctx.fillStyle = "#4488ff"; ctx.fillText("HP:  " + player.maxHealth           + pct(player.maxHealth, base.maxHealth),  sx, sy + 45);
-  ctx.fillStyle = "#00ff88"; ctx.fillText("SPD: " + player.speed.toFixed(1)   + pct(player.speed,     base.speed),      sx, sy + 70);
+  ctx.fillStyle = "#ff6644"; ctx.fillText("ATK: " + player.damage           + pct(player.damage,    base.damage),    sx, sy + 20);
+  ctx.fillStyle = "#4488ff"; ctx.fillText("HP:  " + player.maxHealth         + pct(player.maxHealth, base.maxHealth), sx, sy + 45);
+  ctx.fillStyle = "#00ff88"; ctx.fillText("SPD: " + player.speed.toFixed(1) + pct(player.speed,     base.speed),     sx, sy + 70);
 
   if (boss) {
     const bBarW = 400, bBarH = 30;
@@ -1026,7 +994,7 @@ function renderHUD() {
     ctx.fillRect(bBarX, bBarY, bBarW * ratio, bBarH);
     ctx.strokeStyle = ratio <= 0.25 ? "#ffff00" : "#ff0000"; ctx.lineWidth = 2; ctx.strokeRect(bBarX, bBarY, bBarW, bBarH);
     ctx.fillStyle = "#FFF"; ctx.font = "bold 14px Courier New"; ctx.textAlign = "center";
-    const label = boss.type === "boss2" ? "ARCHMAGE" : "WARDEN"; // [boss names]
+    const label = boss.type === "boss2" ? "ARCHMAGE" : "WARDEN";
     ctx.fillText((ratio <= 0.25 ? "⚠ ENRAGED ⚠  " : label + "  ") + Math.ceil(boss.health) + " / " + boss.maxHealth, canvas.width / 2, bBarY + bBarH - 8);
     ctx.textAlign = "left";
   }
@@ -1053,10 +1021,10 @@ function renderShop() {
   ctx.fillText("Coins: " + coinCount, canvas.width / 2, py + 130);
 
   const items = [
-    { label: "[1] +25% Damage — " + damagePrice + " coins", color: "#ff6644", can: coinCount >= damagePrice,                                    y: py + 190 },
-    { label: "[2] +25% Max HP — " + healthPrice + " coins", color: "#4488ff", can: coinCount >= healthPrice,                                    y: py + 250 },
+    { label: "[1] +25% Damage — " + damagePrice + " coins", color: "#ff6644", can: coinCount >= damagePrice, y: py + 190 },
+    { label: "[2] +25% Max HP — " + healthPrice + " coins", color: "#4488ff", can: coinCount >= healthPrice, y: py + 250 },
     { label: player.speed >= player.maxSpeed ? "[3] Speed MAX" : "[3] +25% Speed — " + speedPrice + " coins",
-      color: "#00ff88", can: coinCount >= speedPrice && player.speed < player.maxSpeed,                                                          y: py + 310 }
+      color: "#00ff88", can: coinCount >= speedPrice && player.speed < player.maxSpeed, y: py + 310 }
   ];
   items.forEach(item => {
     ctx.fillStyle = item.can ? item.color : "#666666";
