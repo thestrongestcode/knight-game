@@ -3,14 +3,18 @@
 // ============================================================
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-canvas.width = window.innerWidth;
+canvas.width  = window.innerWidth;
 canvas.height = window.innerHeight;
-
+window.addEventListener("resize", () => {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+ 
 // ============================================================
 // DEV FLAGS
 // ============================================================
 const DEV_IMMORTAL = true;
-
+ 
 // ============================================================
 // ASSETS
 // ============================================================
@@ -34,7 +38,7 @@ const imageLoads = Object.entries(assets).map(([key, src]) => {
   img[key].src = src;
   return new Promise(res => img[key].onload = res);
 });
-
+ 
 // ============================================================
 // SPRITE ANIMATION
 // ============================================================
@@ -52,12 +56,12 @@ const spriteLoads = [
   spriteSheets[key].img.src = src;
   return new Promise(res => spriteSheets[key].img.onload = res);
 });
-
+ 
 let currentAnim = "idle";
 let currentFrame = 0;
 let frameTimer = 0;
 const FRAME_SPEED = 8;
-
+ 
 // ============================================================
 // BOSS ROOM HELPERS
 // [Warden spawns every 10 rooms, Archmage every 20 rooms.
@@ -68,10 +72,10 @@ function getBossType(room) {
   if (room % 10 === 0) return "boss1";
   return null;
 }
-
+ 
 function isBossRoomNumber(room) { return getBossType(room) !== null; }
 function isShopRoomNumber(room) { return room % 5 === 0 && !isBossRoomNumber(room); }
-
+ 
 // ============================================================
 // GAME STATE
 // ============================================================
@@ -86,10 +90,10 @@ let isShopRoom = false;
 let isBossRoom = false;
 let shopOpen = false;
 let shopHealMessage = "";
-
+ 
 const projectiles = [];
 const boss2Projectiles = [];
-
+ 
 const devChannel = new BroadcastChannel("dev_controls");
 devChannel.onmessage = (e) => {
   const { type, value } = e.data;
@@ -102,19 +106,19 @@ devChannel.onmessage = (e) => {
   if (type === "godMode")      { player.health = 99999; player.maxHealth = 99999; player.damage = 99999; coinCount = 9999; }
   if (type === "heal")         player.health = player.maxHealth;
 };
-
+ 
 // ============================================================
 // PLAYER BASE STATS
 // ============================================================
 const playerBase = { damage: 30, maxHealth: 100, speed: 4 };
-
+ 
 // ============================================================
 // PLAYER OBJECT
 // ============================================================
 const player = {
   x: canvas.width / 2.08,
   y: canvas.height / 1.35,
-  width: 96, height: 96,
+  width: 50, height: 50,
   speed: 4,
   maxSpeed: 13,
   color: "slategray",
@@ -123,7 +127,7 @@ const player = {
   attackTimer: 0, attackCooldown: 0, attackHits: [],
   damage: 30
 };
-
+ 
 // ============================================================
 // SPRITE FUNCTIONS (defined after player)
 // ============================================================
@@ -131,7 +135,7 @@ function updateAnimation(animName) {
   if (currentAnim !== animName) { currentAnim = animName; currentFrame = 0; frameTimer = 0; }
   if (++frameTimer >= FRAME_SPEED) { frameTimer = 0; currentFrame = (currentFrame + 1) % spriteSheets[currentAnim].frames; }
 }
-
+ 
 function drawKnight(x, y, facingLeft) {
   const sheet = spriteSheets[currentAnim];
   const sx = currentFrame * sheet.fw;
@@ -145,7 +149,7 @@ function drawKnight(x, y, facingLeft) {
   }
   ctx.restore();
 }
-
+ 
 // ============================================================
 // KNOCKBACK CONFIG
 // ============================================================
@@ -155,13 +159,13 @@ const knockbackConfig = {
   ranged:  { force: 12, decay: 0.74 },
   tank:    { force:  4, decay: 0.65 },
 };
-
+ 
 // ============================================================
 // COIN SYSTEM
 // ============================================================
 const coins = [];
 let coinCount = 0;
-
+ 
 // ============================================================
 // SHOP SYSTEM
 // ============================================================
@@ -171,7 +175,7 @@ const shopBox = {
   width: 50, height: 50
 };
 const shopProximity = 150;
-
+ 
 function getShopPrices() {
   const mult = 1 + (Math.floor(roomNumber / 5) * 0.5);
   return {
@@ -180,28 +184,28 @@ function getShopPrices() {
     speedPrice:  Math.floor(8  * mult)
   };
 }
-
+ 
 // ============================================================
 // BOSS STATE (shared by boss1 + boss2)
 // ============================================================
 let boss = null;
-
+ 
 let bossChargeState = "idle";
 let bossChargeTimer = 0;
 let bossChargeCooldown = 0;
 let bossChargeTargetX = 0, bossChargeTargetY = 0;
 let bossTelegraphFlash = 0;
 let bossChargeDamageDealt = false;
-
+ 
 let bossAoeState = "idle";
 let bossAoeRadius = 0;
 const bossAoeMaxRadius = 300;
 let bossAoeCenterX = 0, bossAoeCenterY = 0;
 let bossAoeDamageDealt = false;
-
+ 
 let boss1MinionTimer = 0;
 const BOSS1_MINION_INTERVAL = 400;
-
+ 
 let boss2ShootTimer = 0;
 let boss2ShootCooldown = 160;
 let boss2RainTimer = 0;
@@ -213,15 +217,15 @@ let boss2BeamCooldown = 0;
 let boss2BeamX = 0, boss2BeamY = 0;
 let boss2BeamDamageDealt = false;
 const BOSS2_RAIN_RADIUS = 100;
-
+ 
 function getChargeCooldown() {
   const enraged = boss && boss.health <= boss.maxHealth * 0.25;
   return Math.floor(Math.random() * (enraged ? 100 : 140)) + (enraged ? 40 : 80);
 }
-
+ 
 let boss1Count = 0;
 let boss2Count = 0;
-
+ 
 function createBoss(bossType) {
   const base = {
     x: canvas.width / 2 - 60,
@@ -229,7 +233,7 @@ function createBoss(bossType) {
     width: 120, height: 120,
     type: bossType
   };
-
+ 
   if (bossType === "boss1") {
     const n = boss1Count;
     const hp  = Math.floor(1400 * Math.pow(4, n));
@@ -245,7 +249,7 @@ function createBoss(bossType) {
       coinDrop:   30 + n * 20
     };
   }
-
+ 
   const n = boss2Count;
   const hp  = Math.floor(5000 * Math.pow(3.8, n));
   const spd = Math.min(1.2 + n * 0.65, 5.5);
@@ -261,15 +265,15 @@ function createBoss(bossType) {
     coinDrop:         45 + n * 30
   };
 }
-
+ 
 // ============================================================
 // ENEMY SYSTEM
 // ============================================================
 const enemies = [];
-
+ 
 function spawnEnemies() {
   if (isShopRoom || isBossRoom) return;
-
+ 
   const speed  = 1.5 + roomNumber * 0.1;
   const hp     = 20  + roomNumber * 5;
   const counts = {
@@ -278,26 +282,26 @@ function spawnEnemies() {
     speeder: Math.min(Math.floor(roomNumber / 3), 3),
     ranged:  Math.min(Math.floor(roomNumber / 4), 3)
   };
-
+ 
   const list = Object.entries(counts)
     .flatMap(([type, n]) => Array(n).fill(type))
     .sort(() => Math.random() - 0.5)
     .slice(0, 10);
-
+ 
   const configs = {
     common:  { width: 40, height: 40, speedMult: 1,    hpMult: 1,   color: "crimson"  },
     tank:    { width: 55, height: 55, speedMult: 0.5,  hpMult: 3,   color: "#8B0000"  },
     speeder: { width: 25, height: 25, speedMult: 2,    hpMult: 0.3, color: "#ff8800"  },
     ranged:  { width: 35, height: 35, speedMult: 0.8,  hpMult: 0.9, color: "#66ccff"  }
   };
-
+ 
   list.forEach(type => {
     let ex, ey, attempts = 0;
     do {
       ex = Math.random() * (canvas.width  - 550) + 275;
       ey = Math.random() * (canvas.height - 340) + 180;
     } while (Math.sqrt((ex - player.x) ** 2 + (ey - player.y) ** 2) < 200 && ++attempts < 20);
-
+ 
     const c = configs[type];
     const enemy = {
       x: ex, y: ey,
@@ -312,7 +316,7 @@ function spawnEnemies() {
     enemies.push(enemy);
   });
 }
-
+ 
 // ============================================================
 // DOOR / EXIT
 // ============================================================
@@ -321,7 +325,7 @@ function getExitDoor() {
     ? { x: canvas.width / 2 - 60, y: 150, width: 120, height: 40 }
     : { x: canvas.width / 2 - 60, y: 120, width: 120, height: 40 };
 }
-
+ 
 // ============================================================
 // BOSS STATE RESET
 // ============================================================
@@ -338,7 +342,7 @@ function resetBossState() {
   boss2Projectiles.length = 0;
   boss2RainWarnings = [];
 }
-
+ 
 // ============================================================
 // ROOM TRANSITION
 // ============================================================
@@ -348,17 +352,17 @@ function advanceRoom() {
   shopOpen = false;
   shopHealMessage = "";
   resetBossState();
-
+ 
   isBossRoom = isBossRoomNumber(roomNumber);
   isShopRoom = isShopRoomNumber(roomNumber);
-
+ 
   if (isShopRoom) {
     roomIsCleared = true;
     const heal = player.maxHealth * 0.5;
     player.health = Math.min(player.maxHealth, player.health + heal);
     shopHealMessage = "You were healed for " + Math.floor(heal) + " HP!";
   }
-
+ 
   if (isBossRoom) {
     const bossType = getBossType(roomNumber);
     boss = createBoss(bossType);
@@ -367,13 +371,13 @@ function advanceRoom() {
     bossChargeCooldown = 60;
     boss2BeamCooldown  = 180;
   }
-
+ 
   player.x = canvas.width / 2.08;
   player.y = canvas.height / 1.35;
   enemies.length = coins.length = projectiles.length = 0;
   spawnEnemies();
 }
-
+ 
 // ============================================================
 // RESTART
 // ============================================================
@@ -385,7 +389,7 @@ function restartGame() {
   player.speed  = 4;
   player.attackTimer = player.attackCooldown = 0;
   player.attackHits = [];
-
+ 
   roomNumber = 1;
   roomIsCleared = isShopRoom = isBossRoom = shopOpen = false;
   shopHealMessage = "";
@@ -393,12 +397,12 @@ function restartGame() {
   fading = false; fadeAlpha = 0;
   boss1Count = boss2Count = 0;
   resetBossState();
-
+ 
   enemies.length = coins.length = projectiles.length = 0;
   spawnEnemies();
   gameState = "playing";
 }
-
+ 
 // ============================================================
 // INPUT
 // ============================================================
@@ -407,12 +411,12 @@ window.addEventListener("keydown", e => { keys[e.key] = true; });
 window.addEventListener("keyup",   e => { keys[e.key] = false; });
 window.addEventListener("mousedown", e => { if (e.button === 0) keys["click"] = true; });
 window.addEventListener("mouseup",   e => { if (e.button === 0) keys["click"] = false; });
-
+ 
 window.addEventListener("keydown", e => {
   if (gameState === "menu" && e.code === "Space") restartGame();
   else if (gameState === "dead" && deathScreenTimer <= 0 && e.code === "Space") restartGame();
 });
-
+ 
 window.addEventListener("keydown", e => {
   if (!shopOpen) return;
   const { damagePrice, healthPrice, speedPrice } = getShopPrices();
@@ -420,7 +424,7 @@ window.addEventListener("keydown", e => {
   if (e.key === "2" && coinCount >= healthPrice) { coinCount -= healthPrice; player.maxHealth = Math.floor(player.maxHealth * 1.25); player.health = player.maxHealth; }
   if (e.key === "3" && coinCount >= speedPrice)  { coinCount -= speedPrice;  player.speed = Math.min(parseFloat((player.speed * 1.25).toFixed(2)), player.maxSpeed); }
 });
-
+ 
 // ============================================================
 // COLLISION
 // ============================================================
@@ -428,7 +432,7 @@ function rectsOverlap(a, b) {
   return a.x < b.x + b.width && a.x + a.width > b.x &&
          a.y < b.y + b.height && a.y + a.height > b.y;
 }
-
+ 
 function contactDamage(entity, dmg) {
   const dx = entity.x - player.x, dy = entity.y - player.y;
   const dist = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -436,20 +440,20 @@ function contactDamage(entity, dmg) {
   entity.y += (dy / dist) * (entity.speed + (entity === boss ? 4 : 3));
   player.health -= dmg;
 }
-
+ 
 // ============================================================
 // UPDATE
 // ============================================================
 function update() {
   if (gameState === "menu") return;
   if (gameState === "dead") { if (deathScreenTimer > 0) deathScreenTimer--; return; }
-
+ 
   if (!fading) {
     if (keys["w"] || keys["ArrowUp"])    player.y -= player.speed;
     if (keys["s"] || keys["ArrowDown"])  player.y += player.speed;
     if (keys["a"] || keys["ArrowLeft"])  player.x -= player.speed;
     if (keys["d"] || keys["ArrowRight"]) player.x += player.speed;
-
+ 
     if (isBossRoom) {
       player.x = Math.max(160, Math.min(canvas.width  - player.width  - 160, player.x));
       player.y = Math.max(180, Math.min(canvas.height - player.height - 80,  player.y));
@@ -457,7 +461,7 @@ function update() {
       player.x = Math.max(90,  Math.min(canvas.width  - player.width  - 90,  player.x));
       player.y = Math.max(100, Math.min(canvas.height - player.height - 70,  player.y));
     }
-
+ 
     if (!isShopRoom) {
       updateEnemies();
       updateAttack();
@@ -471,16 +475,16 @@ function update() {
       updateCoins();
       if (!isBossRoom && enemies.length === 0 && !roomIsCleared) roomIsCleared = true;
     }
-
+ 
     if (isShopRoom) {
       const px = player.x + player.width  / 2, py = player.y + player.height / 2;
       const sx = shopBox.x + shopBox.width / 2, sy = shopBox.y + shopBox.height / 2;
       shopOpen = Math.sqrt((px - sx) ** 2 + (py - sy) ** 2) < shopProximity;
     }
-
+ 
     if (roomIsCleared && rectsOverlap(player, getExitDoor())) { fading = true; fadeDirection = "out"; }
   }
-
+ 
   if (fading) {
     if (fadeDirection === "out") {
       fadeAlpha += 0.05;
@@ -491,7 +495,7 @@ function update() {
     }
   }
 }
-
+ 
 // ============================================================
 // ENEMY UPDATE
 // ============================================================
@@ -507,10 +511,10 @@ function updateEnemies() {
       enemy.knockbackVy *= knockbackConfig[enemy.type]?.decay ?? 0.75;
       if (Math.abs(enemy.knockbackVy) < 0.1) enemy.knockbackVy = 0;
     }
-
+ 
     const dx = player.x - enemy.x, dy = player.y - enemy.y;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-
+ 
     if (enemy.type === "ranged") {
       const pref = 300;
       if (dist > pref + 40) {
@@ -532,7 +536,7 @@ function updateEnemies() {
       enemy.x += (dx / dist) * enemy.speed;
       enemy.y += (dy / dist) * enemy.speed;
     }
-
+ 
     if (enemy.type !== "ranged" && rectsOverlap(player, enemy)) {
       const dmg = enemy.type === "tank"    ? 1.5 + roomNumber * 0.2
                 : enemy.type === "speeder" ? 0.2 + roomNumber * 0.05
@@ -540,7 +544,7 @@ function updateEnemies() {
       contactDamage(enemy, dmg);
     }
   });
-
+ 
   for (let i = projectiles.length - 1; i >= 0; i--) {
     const p = projectiles[i];
     p.x += p.vx; p.y += p.vy;
@@ -548,16 +552,16 @@ function updateEnemies() {
     if (rectsOverlap(p, player)) { player.health -= 8 + roomNumber * 0.4; projectiles.splice(i, 1); }
   }
 }
-
+ 
 // ============================================================
 // BOSS UPDATE
 // ============================================================
 function updateBoss() {
   if (!boss) return;
-
+ 
   if (boss.type === "boss1") updateBoss1();
   if (boss.type === "boss2") updateBoss2();
-
+ 
   if (boss.type === "boss1" && boss.health > 0) {
     if (--boss1MinionTimer <= 0) {
       boss1MinionTimer = BOSS1_MINION_INTERVAL;
@@ -575,7 +579,7 @@ function updateBoss() {
       }
     }
   }
-
+ 
   if (boss.health <= 0) {
     for (let i = 0; i < boss.coinDrop; i++)
       coins.push({ x: boss.x + Math.random() * boss.width, y: boss.y + Math.random() * boss.height, width: 10, height: 10 });
@@ -584,11 +588,11 @@ function updateBoss() {
     roomIsCleared = true;
   }
 }
-
+ 
 function updateBoss1() {
   const enraged = boss.health <= boss.maxHealth * 0.5;
   if (enraged) { boss.speed = boss.baseSpeed * 4; boss.damage = 3; boss.color = "#ff0000"; }
-
+ 
   if (bossChargeState === "idle" && bossAoeState === "idle") {
     if (--bossChargeCooldown <= 0) {
       const dx = player.x + player.width / 2 - (boss.x + boss.width / 2);
@@ -606,12 +610,12 @@ function updateBoss1() {
       bossChargeCooldown = getChargeCooldown();
     }
   }
-
+ 
   if (bossChargeState === "telegraphing") {
     bossTelegraphFlash++;
     if (--bossChargeTimer <= 0) { bossChargeState = "dashing"; bossChargeTimer = 30; }
   }
-
+ 
   if (bossChargeState === "dashing") {
     const dx = bossChargeTargetX - boss.x, dy = bossChargeTargetY - boss.y;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -622,9 +626,9 @@ function updateBoss1() {
     }
     if (--bossChargeTimer <= 0) { bossChargeState = "cooldown"; bossChargeTimer = 40; }
   }
-
+ 
   if (bossChargeState === "cooldown" && --bossChargeTimer <= 0) bossChargeState = "idle";
-
+ 
   if (bossAoeState === "expanding") {
     bossAoeRadius += 4;
     if (!bossAoeDamageDealt) {
@@ -639,34 +643,34 @@ function updateBoss1() {
       bossAoeState = "idle"; bossAoeRadius = 0; bossChargeCooldown = getChargeCooldown();
     }
   }
-
+ 
   if ((bossChargeState === "idle" || bossChargeState === "cooldown") && bossAoeState === "idle") {
     const dx = player.x - boss.x, dy = player.y - boss.y;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
     boss.x += (dx / dist) * boss.speed; boss.y += (dy / dist) * boss.speed;
   }
-
+ 
   if (bossChargeState !== "dashing" && rectsOverlap(player, boss)) contactDamage(boss, boss.damage);
 }
-
+ 
 function updateBoss2() {
   const enraged = boss.health <= boss.maxHealth * 0.5;
   if (enraged) { boss.speed = boss.baseSpeed * 2; boss.damage = 2.5; boss.color = "#7700ff"; }
-
+ 
   const dx = player.x + player.width / 2 - (boss.x + boss.width / 2);
   const dy = player.y + player.height / 2 - (boss.y + boss.height / 2);
   const dist = Math.sqrt(dx * dx + dy * dy) || 1;
   const pref = 300;
-
+ 
   if (boss2BeamState === "idle" || boss2BeamState === "stunned") {
     if (dist > pref + 50)      { boss.x += (dx / dist) * boss.speed; boss.y += (dy / dist) * boss.speed; }
     else if (dist < pref - 50) { boss.x -= (dx / dist) * boss.speed; boss.y -= (dy / dist) * boss.speed; }
     boss.x = Math.max(260, Math.min(canvas.width  - boss.width  - 260, boss.x));
     boss.y = Math.max(170, Math.min(canvas.height - boss.height - 140, boss.y));
   }
-
+ 
   if (rectsOverlap(player, boss)) contactDamage(boss, boss.damage);
-
+ 
   if (boss2BeamState !== "firing" && boss2BeamState !== "windup" && --boss2ShootTimer <= 0) {
     boss2ShootTimer = boss2ShootCooldown;
     const base = Math.atan2(dy, dx);
@@ -677,7 +681,7 @@ function updateBoss2() {
         width: 22, height: 22, type: "normal" });
     });
   }
-
+ 
   if (--boss2RainTimer <= 0) {
     boss2RainTimer = boss2RainCooldown;
     const count = 5 + Math.floor(roomNumber / 10);
@@ -688,7 +692,7 @@ function updateBoss2() {
         timer: 30, radius: BOSS2_RAIN_RADIUS
       });
   }
-
+ 
   for (let i = boss2RainWarnings.length - 1; i >= 0; i--) {
     if (--boss2RainWarnings[i].timer <= 0) {
       const w = boss2RainWarnings[i];
@@ -698,7 +702,7 @@ function updateBoss2() {
       boss2RainWarnings.splice(i, 1);
     }
   }
-
+ 
   if (boss2BeamState === "idle" && --boss2BeamCooldown <= 0) {
     boss2BeamState = "windup"; boss2BeamTimer = 45;
     boss2BeamX = player.x + player.width / 2;
@@ -729,7 +733,7 @@ function updateBoss2() {
     }
   }
   if (boss2BeamState === "stunned" && --boss2BeamTimer <= 0) boss2BeamState = "idle";
-
+ 
   for (let i = boss2Projectiles.length - 1; i >= 0; i--) {
     const p = boss2Projectiles[i];
     if (p.type === "rain") {
@@ -746,7 +750,7 @@ function updateBoss2() {
     }
   }
 }
-
+ 
 // ============================================================
 // ATTACK UPDATE
 // ============================================================
@@ -755,7 +759,7 @@ function updateAttack() {
   if (keys["s"] || keys["ArrowDown"])  player.facing = "down";
   if (keys["a"] || keys["ArrowLeft"])  player.facing = "left";
   if (keys["d"] || keys["ArrowRight"]) player.facing = "right";
-
+ 
   if ((keys[" "] || keys["click"]) && player.attackCooldown <= 0) {
     player.attackTimer    = 8;
     player.attackCooldown = 18;
@@ -763,15 +767,15 @@ function updateAttack() {
   }
   if (player.attackTimer    > 0) player.attackTimer--;
   if (player.attackCooldown > 0) player.attackCooldown--;
-
+ 
   const animName = player.attackTimer > 0 ? "attack"
     : (keys["w"] || keys["s"] || keys["a"] || keys["d"] || keys["ArrowUp"] || keys["ArrowDown"] || keys["ArrowLeft"] || keys["ArrowRight"]) ? (player.speed > 6 ? "run" : "walk")
     : "idle";
   updateAnimation(animName);
-
+ 
   if (player.attackTimer > 0) {
     const attackBox = getAttackBox();
-
+ 
     enemies.forEach((enemy, i) => {
       if (rectsOverlap(attackBox, enemy) && !player.attackHits.includes(i)) {
         enemy.health -= player.damage;
@@ -783,12 +787,12 @@ function updateAttack() {
         enemy.knockbackVy = (kbDy / kbDist) * kb.force;
       }
     });
-
+ 
     if (boss && rectsOverlap(attackBox, boss) && !player.attackHits.includes("boss")) {
       boss.health -= player.damage;
       player.attackHits.push("boss");
     }
-
+ 
     for (let i = enemies.length - 1; i >= 0; i--) {
       if (enemies[i].health <= 0) {
         const drop = enemies[i].type === "tank" ? 3 : enemies[i].type === "ranged" ? 2 : 1;
@@ -799,7 +803,7 @@ function updateAttack() {
     }
   }
 }
-
+ 
 function getAttackBox() {
   const hw = 60, hh = 60;
   const dirs = {
@@ -810,7 +814,7 @@ function getAttackBox() {
   };
   return { ...dirs[player.facing], width: hw, height: hh };
 }
-
+ 
 // ============================================================
 // COIN UPDATE
 // ============================================================
@@ -821,7 +825,7 @@ function updateCoins() {
     if (d < 60) { coinCount++; coins.splice(i, 1); }
   }
 }
-
+ 
 // ============================================================
 // RENDER
 // ============================================================
@@ -838,44 +842,38 @@ function render() {
     ctx.textAlign = "left";
     return;
   }
-
+ 
   let bgImage;
   const bossType = getBossType(roomNumber);
   if (bossType === "boss1") bgImage = roomIsCleared ? img.bossRoom1Cleared : img.bossRoom1;
   else if (bossType === "boss2") bgImage = roomIsCleared ? img.bossRoom2Cleared : img.bossRoom2;
   else bgImage = roomIsCleared ? img.roomCleared : img.roomBackground;
   ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
-
+ 
   // [draw player]
   drawKnight(player.x, player.y, player.facing === "left");
-
+ 
   enemies.forEach(e => { ctx.fillStyle = e.color; ctx.fillRect(e.x, e.y, e.width, e.height); });
-
+ 
   if (boss) renderBoss();
-
+ 
   ctx.fillStyle = "#FFD700";
   coins.forEach(c => ctx.fillRect(c.x, c.y, c.width, c.height));
-
+ 
   ctx.fillStyle = "#66ccff";
   projectiles.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI * 2); ctx.fill(); });
-
+ 
   renderHUD();
-
-  if (player.attackTimer > 0) {
-    const b = getAttackBox();
-    ctx.fillStyle = "rgba(255,220,0,0.4)";
-    ctx.fillRect(b.x, b.y, b.width, b.height);
-  }
-
+ 
   if (isShopRoom) {
     ctx.drawImage(img.shopImage, shopBox.x - 100, shopBox.y - 50, 250, 200);
     ctx.fillStyle = "#FFFFFF"; ctx.font = "bold 20px Courier New"; ctx.textAlign = "center";
     ctx.fillText("SHOP", shopBox.x + shopBox.width / 2, shopBox.y - 55);
     ctx.textAlign = "left";
   }
-
+ 
   if (shopOpen) renderShop();
-
+ 
   if (gameState === "dead") {
     ctx.drawImage(img.deathScreen, 0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "rgba(0,0,0,0.55)";
@@ -885,10 +883,10 @@ function render() {
     ctx.fillText("Reached Room " + roomNumber + "   |   Press any key to Restart", canvas.width / 2, canvas.height - 28);
     ctx.textAlign = "left";
   }
-
+ 
   if (fadeAlpha > 0) { ctx.fillStyle = `rgba(0,0,0,${fadeAlpha})`; ctx.fillRect(0, 0, canvas.width, canvas.height); }
 }
-
+ 
 // ============================================================
 // BOSS RENDER
 // ============================================================
@@ -899,7 +897,7 @@ function renderBoss() {
   ctx.strokeStyle = enraged ? "#ffff00" : "#ff0000";
   ctx.lineWidth   = enraged ? 5 : 3;
   ctx.strokeRect(boss.x, boss.y, boss.width, boss.height);
-
+ 
   if (boss.type === "boss1") {
     if (bossChargeState === "telegraphing" && Math.floor(bossTelegraphFlash / 3) % 2 === 0) {
       ctx.fillStyle = "rgba(255,0,0,0.25)";
@@ -917,7 +915,7 @@ function renderBoss() {
       ctx.restore();
     }
   }
-
+ 
   if (boss.type === "boss2") {
     boss2RainWarnings.forEach(w => {
       const alpha = 0.3 + (1 - w.timer / 30) * 0.5;
@@ -925,7 +923,7 @@ function renderBoss() {
       ctx.fillStyle = `rgba(255,0,0,${alpha})`; ctx.fill();
       ctx.strokeStyle = "rgba(255,100,0,0.8)"; ctx.lineWidth = 2; ctx.stroke();
     });
-
+ 
     boss2Projectiles.forEach(p => {
       ctx.beginPath();
       if (p.type === "rain") {
@@ -937,14 +935,14 @@ function renderBoss() {
         ctx.fillStyle = "#cc88ff"; ctx.fill();
       }
     });
-
+ 
     if (boss2BeamState === "windup" && Math.floor(Date.now() / 80) % 2 === 0) {
       ctx.beginPath();
       ctx.moveTo(boss.x + boss.width / 2, boss.y + boss.height / 2);
       ctx.lineTo(boss2BeamX, boss2BeamY);
       ctx.strokeStyle = "rgba(200,100,255,0.5)"; ctx.lineWidth = 4; ctx.stroke();
     }
-
+ 
     if (boss2BeamState === "firing") {
       const bcx = boss.x + boss.width / 2, bcy = boss.y + boss.height / 2;
       const angle = Math.atan2(boss2BeamY - bcy, boss2BeamX - bcx);
@@ -955,14 +953,14 @@ function renderBoss() {
       ctx.fillStyle = "rgba(255,255,255,0.95)"; ctx.fillRect(0, -beamW / 8,       2000, (beamW / 8) * 2);
       ctx.restore();
     }
-
+ 
     if (boss2BeamState === "stunned") {
       ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.font = "bold 16px Courier New";
       ctx.textAlign = "center"; ctx.fillText("STUNNED", boss.x + boss.width / 2, boss.y - 10); ctx.textAlign = "left";
     }
   }
 }
-
+ 
 // ============================================================
 // HUD RENDER
 // ============================================================
@@ -974,17 +972,17 @@ function renderHUD() {
   ctx.fillStyle = "#FFF"; ctx.font = "bold 14px Arial"; ctx.textAlign = "center";
   ctx.fillText(Math.ceil(player.health) + " / " + player.maxHealth, bx + bw / 2, by + bh - 8);
   ctx.textAlign = "left";
-
+ 
   ctx.fillStyle  = "#FFF";    ctx.font = "bold 18px Courier New"; ctx.fillText("Room: "  + roomNumber, 20, by + bh + 25);
   ctx.fillStyle  = "#FFD700"; ctx.font = "bold 16px Courier New"; ctx.fillText("Coins: " + coinCount,  20, by + bh + 50);
-
+ 
   const base = playerBase, sx = canvas.width - 220, sy = 20;
   ctx.font = "bold 15px Courier New";
   const pct = (val, b) => { const p = Math.round(((val - b) / b) * 100); return p > 0 ? ` (+${p}%)` : ""; };
   ctx.fillStyle = "#ff6644"; ctx.fillText("ATK: " + player.damage           + pct(player.damage,    base.damage),    sx, sy + 20);
   ctx.fillStyle = "#4488ff"; ctx.fillText("HP:  " + player.maxHealth         + pct(player.maxHealth, base.maxHealth), sx, sy + 45);
   ctx.fillStyle = "#00ff88"; ctx.fillText("SPD: " + player.speed.toFixed(1) + pct(player.speed,     base.speed),     sx, sy + 70);
-
+ 
   if (boss) {
     const bBarW = 400, bBarH = 30;
     const bBarX = canvas.width / 2 - bBarW / 2, bBarY = canvas.height - 80;
@@ -998,7 +996,7 @@ function renderHUD() {
     ctx.fillText((ratio <= 0.25 ? "⚠ ENRAGED ⚠  " : label + "  ") + Math.ceil(boss.health) + " / " + boss.maxHealth, canvas.width / 2, bBarY + bBarH - 8);
     ctx.textAlign = "left";
   }
-
+ 
   if (roomIsCleared && !isShopRoom) {
     ctx.fillStyle = "rgba(255,255,255,0.8)"; ctx.font = "bold 36px Courier New"; ctx.textAlign = "center";
     ctx.fillText(isBossRoom ? "Boss Defeated!" : "Room Cleared!", canvas.width / 2, canvas.height / 2);
@@ -1007,7 +1005,7 @@ function renderHUD() {
     ctx.textAlign = "left";
   }
 }
-
+ 
 // ============================================================
 // SHOP RENDER
 // ============================================================
@@ -1019,7 +1017,7 @@ function renderShop() {
   ctx.textAlign = "center";
   ctx.fillStyle = "#FFD700"; ctx.font = "bold 20px Courier New";
   ctx.fillText("Coins: " + coinCount, canvas.width / 2, py + 130);
-
+ 
   const items = [
     { label: "[1] +25% Damage — " + damagePrice + " coins", color: "#ff6644", can: coinCount >= damagePrice, y: py + 190 },
     { label: "[2] +25% Max HP — " + healthPrice + " coins", color: "#4488ff", can: coinCount >= healthPrice, y: py + 250 },
@@ -1030,15 +1028,15 @@ function renderShop() {
     ctx.fillStyle = item.can ? item.color : "#666666";
     ctx.fillText(item.label, canvas.width / 2, item.y);
   });
-
+ 
   ctx.fillStyle = "#13d013"; ctx.font = "18px Courier New"; ctx.fillText(shopHealMessage, canvas.width / 2, py + 390);
   ctx.fillStyle = "#c9eb1c"; ctx.font = "15px Courier New"; ctx.fillText("Press 1, 2 or 3 to buy. Walk away to close.", canvas.width / 2, py + 460);
   ctx.textAlign = "left";
 }
-
+ 
 // ============================================================
 // GAME LOOP
 // ============================================================
 function gameLoop() { update(); render(); requestAnimationFrame(gameLoop); }
-
+ 
 Promise.all([...imageLoads, ...spriteLoads]).then(() => gameLoop());
