@@ -32,7 +32,11 @@ const img = {};
 const imageLoads = Object.entries(assets).map(([key, src]) => {
   img[key] = new Image();
   img[key].src = src;
-  return new Promise(res => img[key].onload = res);
+
+  return new Promise(res => {
+    img[key].onload = res;
+    img[key].onerror = res; // 👈 IMPORTANTE: evita que se quede colgado si falla una imagen
+  });
 });
 
 // ============================================================
