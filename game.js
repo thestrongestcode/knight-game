@@ -31,6 +31,47 @@ const assets = {
 
 const img = {};
 const imageLoads = Object.entries(assets).map(([key, src]) => {
+  // ============================================================
+// SPRITE ANIMATION
+// ============================================================
+const FRAME_H = 24;
+const spriteSheets = {};
+const spriteLoads = [
+  { key: "idle",   src: "Combat Ready Idle.png", frames: 5,  fw: 22 },
+  { key: "walk",   src: "Walk.png",              frames: 6,  fw: 22 },
+  { key: "run",    src: "Run.png",               frames: 6,  fw: 22 },
+  { key: "attack", src: "Attack 1.png",          frames: 8,  fw: 22 },
+  { key: "hit",    src: "Hit Front.png",         frames: 4,  fw: 22 },
+  { key: "dead",   src: "Fall.png",              frames: 4,  fw: 22 },
+].map(({ key, src, frames, fw }) => {
+  spriteSheets[key] = { img: new Image(), frames, fw };
+  spriteSheets[key].img.src = src;
+  return new Promise(res => spriteSheets[key].img.onload = res);
+});
+
+let currentAnim = "idle";
+let currentFrame = 0;
+let frameTimer = 0;
+const FRAME_SPEED = 8;
+
+function updateAnimation(animName) {
+  if (currentAnim !== animName) { currentAnim = animName; currentFrame = 0; frameTimer = 0; }
+  if (++frameTimer >= FRAME_SPEED) { frameTimer = 0; currentFrame = (currentFrame + 1) % spriteSheets[currentAnim].frames; }
+}
+
+function drawKnight(x, y, facingLeft) {
+  const sheet = spriteSheets[currentAnim];
+  const sx = currentFrame * sheet.fw;
+  ctx.save();
+  if (facingLeft) {
+    ctx.translate(x + player.width, y);
+    ctx.scale(-1, 1);
+    ctx.drawImage(sheet.img, sx, 0, sheet.fw, FRAME_H, 0, 0, player.width, player.height);
+  } else {
+    ctx.drawImage(sheet.img, sx, 0, sheet.fw, FRAME_H, x, y, player.width, player.height);
+  }
+  ctx.restore();
+}
   img[key] = new Image();
   img[key].src = src;
   return new Promise(res => img[key].onload = res);
@@ -751,6 +792,10 @@ function updateAttack() {
   }
   if (player.attackTimer    > 0) player.attackTimer--;
   if (player.attackCooldown > 0) player.attackCooldown--;
+  const animName = player.attackTimer > 0 ? "attack"
+    : (keys["w"] || keys["s"] || keys["a"] || keys["d"] || keys["ArrowUp"] || keys["ArrowDown"] || keys["ArrowLeft"] || keys["ArrowRight"]) ? (player.speed > 6 ? "run" : "walk")
+    : "idle";
+  updateAnimation(animName);
 
   if (player.attackTimer > 0) {
     const attackBox = getAttackBox();
@@ -833,9 +878,8 @@ function render() {
   else bgImage = roomIsCleared ? img.roomCleared : img.roomBackground;
   ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
 
-  ctx.fillStyle = player.color;
-  ctx.fillRect(player.x, player.y, player.width, player.height);
-
+ // [draw player]
+  drawKnight(player.x, player.y, player.facing === "left");
   enemies.forEach(e => { ctx.fillStyle = e.color; ctx.fillRect(e.x, e.y, e.width, e.height); });
 
   if (boss) renderBoss();
@@ -1028,4 +1072,4 @@ function renderShop() {
 // ============================================================
 function gameLoop() { update(); render(); requestAnimationFrame(gameLoop); }
 
-Promise.all(imageLoads).then(() => gameLoop());
+Promise.all([...imageLoads, ...spriteLoads]).then(() => gameLoop());
