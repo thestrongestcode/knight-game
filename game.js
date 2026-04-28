@@ -140,7 +140,7 @@ function drawKnight(x, y, facingLeft) {
     ctx.drawImage(sheet.img, sx, 0, sheet.fw, FRAME_H, x, y, player.width, player.height);
   }
   ctx.restore();
-  }
+}
 
 // ============================================================
 // KNOCKBACK CONFIG
