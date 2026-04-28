@@ -31,7 +31,8 @@ const assets = {
 
 const img = {};
 const imageLoads = Object.entries(assets).map(([key, src]) => {
-  // ============================================================
+}
+                                              // ============================================================
 // SPRITE ANIMATION
 // ============================================================
 const FRAME_H = 24;
@@ -57,6 +58,20 @@ const FRAME_SPEED = 8;
 function updateAnimation(animName) {
   if (currentAnim !== animName) { currentAnim = animName; currentFrame = 0; frameTimer = 0; }
   if (++frameTimer >= FRAME_SPEED) { frameTimer = 0; currentFrame = (currentFrame + 1) % spriteSheets[currentAnim].frames; }
+}
+
+function drawKnight(x, y, facingLeft) {
+  const sheet = spriteSheets[currentAnim];
+  const sx = currentFrame * sheet.fw;
+  ctx.save();
+  if (facingLeft) {
+    ctx.translate(x + player.width, y);
+    ctx.scale(-1, 1);
+    ctx.drawImage(sheet.img, sx, 0, sheet.fw, FRAME_H, 0, 0, player.width, player.height);
+  } else {
+    ctx.drawImage(sheet.img, sx, 0, sheet.fw, FRAME_H, x, y, player.width, player.height);
+  }
+  ctx.restore();
 }
 
 function drawKnight(x, y, facingLeft) {
