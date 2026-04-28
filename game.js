@@ -31,7 +31,13 @@ const assets = {
 
 const img = {};
 const imageLoads = Object.entries(assets).map(([key, src]) => {
-  
+  img[key] = new Image();
+  img[key].src = src;
+  return new Promise(res => img[key].onload = res);
+});
+
+// ============================================================
+// SPRITE ANIMATION
                                              
 // ============================================================
 // SPRITE ANIMATION
@@ -46,10 +52,7 @@ const spriteLoads = [
   { key: "hit",    src: "Hit Front.png",         frames: 4,  fw: 22 },
   { key: "dead",   src: "Fall.png",              frames: 4,  fw: 22 },
 ].map(({ key, src, frames, fw }) => {
-  spriteSheets[key] = { img: new Image(), frames, fw };
-  spriteSheets[key].img.src = src;
-  return new Promise(res => spriteSheets[key].img.onload = res);
-});
+  
 
 let currentAnim = "idle";
 let currentFrame = 0;
