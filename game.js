@@ -115,7 +115,7 @@ const playerBase = { damage: 30, maxHealth: 100, speed: 4 };
 const player = {
   x: canvas.width / 2.08,
   y: canvas.height / 1.35,
-  width: 70, height: 70,
+  width: 22, height: 24,
   speed: 12,
   maxSpeed: 13,
   color: "slategray",
@@ -704,7 +704,7 @@ function updateAttack() {
 }
  
 function getAttackBox() {
-  const hw = 60, hh = 60;
+  const hw = 50, hh = 50;
   const dirs = {
     right: { x: player.x + player.width, y: player.y - 5 },
     left:  { x: player.x - hw,           y: player.y - 5 },
