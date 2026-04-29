@@ -13,7 +13,7 @@ window.addEventListener("resize", () => {
 // ============================================================
 // DEV FLAGS
 // ============================================================
-const DEV_IMMORTAL = true;
+const DEV_IMMORTAL = false;
  
 // ============================================================
 // ASSETS
@@ -115,8 +115,8 @@ const playerBase = { damage: 30, maxHealth: 100, speed: 4 };
 const player = {
   x: canvas.width / 2.08,
   y: canvas.height / 1.35,
-  width: 96, height: 96,
-  speed: 4,
+  width: 70, height: 70,
+  speed: 12,
   maxSpeed: 13,
   color: "slategray",
   health: 100, maxHealth: 100,
