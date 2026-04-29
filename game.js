@@ -704,14 +704,45 @@ function updateAttack() {
 }
  
 function getAttackBox() {
-  const hw = 50, hh = 50;
-  const dirs = {
-    right: { x: player.x + player.width, y: player.y - 5 },
-    left:  { x: player.x - hw,           y: player.y - 5 },
-    down:  { x: player.x - 5,            y: player.y + player.height },
-    up:    { x: player.x - 5,            y: player.y - hh }
-  };
-  return { ...dirs[player.facing], width: hw, height: hh };
+  const hw = 50;
+  const hh = 50;
+
+  const centerX = player.x + player.width / 2;
+  const centerY = player.y + player.height / 2;
+
+  switch (player.facing) {
+    case "right":
+      return {
+        x: player.x + player.width,
+        y: centerY - hh / 2,
+        width: hw,
+        height: hh
+      };
+
+    case "left":
+      return {
+        x: player.x - hw,
+        y: centerY - hh / 2,
+        width: hw,
+        height: hh
+      };
+
+    case "down":
+      return {
+        x: centerX - hw / 2,
+        y: player.y + player.height,
+        width: hw,
+        height: hh
+      };
+
+    case "up":
+      return {
+        x: centerX - hw / 2,
+        y: player.y - hh,
+        width: hw,
+        height: hh
+      };
+  }
 }
  
 // ============================================================
