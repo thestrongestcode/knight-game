@@ -398,11 +398,15 @@ function update() {
   if (gameState === "dead") { if (deathScreenTimer > 0) deathScreenTimer--; return; }
  
   if (!fading) {
-    if (keys["w"] || keys["ArrowUp"])    player.y -= player.speed;
-    if (keys["s"] || keys["ArrowDown"])  player.y += player.speed;
-    if (keys["a"] || keys["ArrowLeft"])  player.x -= player.speed;
-    if (keys["d"] || keys["ArrowRight"]) player.x += player.speed;
- 
+if (keys["a"] || keys["ArrowLeft"]) {
+  player.facing = "left";
+} else if (keys["d"] || keys["ArrowRight"]) {
+  player.facing = "right";
+} else if (keys["w"] || keys["ArrowUp"]) {
+  player.facing = "up";
+} else if (keys["s"] || keys["ArrowDown"]) {
+  player.facing = "down";
+}
     if (isBossRoom) {
       player.x = Math.max(160, Math.min(canvas.width  - player.width  - 160, player.x));
       player.y = Math.max(180, Math.min(canvas.height - player.height - 80,  player.y));
