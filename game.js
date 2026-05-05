@@ -40,7 +40,7 @@ const imageLoads = Object.entries(assets).map(([key, src]) => {
 });
 
 const goblinSheet = new Image();
-goblinSheet.src = "image.png";
+goblinSheet.src = "images.png";
 const goblinLoad = new Promise(res => goblinSheet.onload = res);
 
 const GOBLIN_COLS = 4;
