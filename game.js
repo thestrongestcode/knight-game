@@ -40,7 +40,7 @@ const imageLoads = Object.entries(assets).map(([key, src]) => {
 });
 
 const goblinSheet = new Image();
-goblinSheet.src = "images.png";
+goblinSheet.src = "Image.png";
 const goblinLoad = new Promise(res => goblinSheet.onload = res);
 
 const GOBLIN_COLS = 4;
@@ -138,6 +138,10 @@ const player = {
 // ============================================================
 // SPRITE FUNCTIONS
 // ============================================================
+function updateAnimation(animName) {
+  if (currentAnim !== animName) { currentAnim = animName; currentFrame = 0; frameTimer = 0; }
+  if (++frameTimer >= FRAME_SPEED) { frameTimer = 0; currentFrame = (currentFrame + 1) % spriteSheets[currentAnim].frames; }
+}
 
 function drawKnight(x, y, facingLeft) {
   const sheet = spriteSheets[currentAnim];
@@ -424,10 +428,6 @@ function update() {
 
     if (!isShopRoom) {
       updateEnemies();
-      function updateAnimation(animName) {
-  if (currentAnim !== animName) { currentAnim = animName; currentFrame = 0; frameTimer = 0; }
-  if (++frameTimer >= FRAME_SPEED) { frameTimer = 0; currentFrame = (currentFrame + 1) % spriteSheets[currentAnim].frames; }
-}
       updateAttack();
       updateBoss();
       if (DEV_IMMORTAL) {
