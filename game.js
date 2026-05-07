@@ -167,6 +167,10 @@ let shopOpen = false, shopHealMessage = "";
 // [TWEAK] set COIN_FRAME_COUNT to match how many frames are in coinSheet
 // [TWEAK] raise COIN_ANIM_SPEED to slow the spin, lower to speed it up
 // ============================================================
+const COIN_MAGNET_DELAY = 30;    // [TWEAK] frames before magnet activates after room clear (30 = ~0.5s at 60fps)
+const COIN_MAGNET_ACCEL = 0.4;   // [TWEAK] how fast coins accelerate toward player
+const COIN_MAGNET_MAX_SPEED = 12; // [TWEAK] max coin travel speed
+let coinMagnetTimer = 0;
 const COIN_FRAME_COUNT = 1; // [TWEAK] update when you add more coin frames
 const COIN_ANIM_SPEED = 6; // [TWEAK] game-loop ticks per coin frame
 let coinAnimFrame = 0, coinAnimTimer = 0;
@@ -404,6 +408,7 @@ function advanceRoom() {
  player.x = canvas.width / 2.08;
  player.y = canvas.height / 1.35;
  enemies.length = coins.length = projectiles.length = 0;
+ coinMagnetTimer = 0;
  spawnEnemies();
 }
 
@@ -424,6 +429,7 @@ function restartGame() {
  boss1Count = boss2Count = 0;
  resetBossState();
  enemies.length = coins.length = projectiles.length = 0;
+ coinMagnetTimer = 0;
  spawnEnemies();
  gameState = "playing";
 }
@@ -668,7 +674,7 @@ function updateBoss() {
  if (boss.health <= 0) {
   playSound("bossDefeated");
   for (let i = 0; i < boss.coinDrop; i++)
-   coins.push({ x: boss.x + Math.random() * boss.width, y: boss.y + Math.random() * boss.height, width: 10, height: 10 });
+   coins.push({ x: boss.x + Math.random() * boss.width, y: boss.y + Math.random() * boss.height, width: 10, height: 10, vx: 0, vy: 0 });
   player.health = player.maxHealth; // full heal on boss kill
   resetBossState();
   roomIsCleared = true;
@@ -873,7 +879,7 @@ function updateAttack() {
     // [TWEAK] coin drops per enemy type
     const drop = enemies[i].type === "tank" ? 3 : enemies[i].type === "ranged" ? 2 : 1;
     for (let c = 0; c < drop; c++)
-     coins.push({ x: enemies[i].x + Math.random() * enemies[i].width, y: enemies[i].y + Math.random() * enemies[i].height, width: 10, height: 10 });
+     coins.push({ x: enemies[i].x + Math.random() * enemies[i].width, y: enemies[i].y + Math.random() * enemies[i].height, width: 10, height: 10, vx: 0, vy: 0 });
     enemies.splice(i, 1);
    }
   }
@@ -896,10 +902,37 @@ function getAttackBox() {
 // COIN UPDATE — collection range is 60px
 // ============================================================
 function updateCoins() {
- const px = player.x + player.width / 2, py = player.y + player.height / 2;
+ const px = player.x + player.width / 2;
+ const py = player.y + player.height / 2;
+
+ if (roomIsCleared && coinMagnetTimer < COIN_MAGNET_DELAY) coinMagnetTimer++; // [TWEAK] magnet start delay
+
+ const magnetActive = roomIsCleared && coinMagnetTimer >= COIN_MAGNET_DELAY;
+
  for (let i = coins.length - 1; i >= 0; i--) {
-  const d = Math.sqrt((coins[i].x + 5 - px) ** 2 + (coins[i].y + 5 - py) ** 2);
-  if (d < 60) { coinCount++; coins.splice(i, 1); playSound("coinPickup"); } // [TWEAK] coin pickup radius (60)
+  const c = coins[i];
+  const cx = c.x + 5, cy = c.y + 5;
+  const dx = px - cx, dy = py - cy;
+  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+
+  if (magnetActive) {
+   // Steer velocity directly toward player rather than just accelerating
+   // This prevents orbiting by always correcting the angle each frame
+   const targetSpd = Math.min(COIN_MAGNET_MAX_SPEED, COIN_MAGNET_ACCEL * dist); // [TWEAK] speed scales with distance
+   c.vx = (dx / dist) * targetSpd;
+   c.vy = (dy / dist) * targetSpd;
+   c.x += c.vx;
+   c.y += c.vy;
+
+   // Recalculate dist after moving to catch coins that crossed the threshold this frame
+   const newDist = Math.sqrt((px - (c.x + 5)) ** 2 + (py - (c.y + 5)) ** 2);
+   if (newDist < 60) { // [TWEAK] coin pickup radius
+    coinCount++;
+    coins.splice(i, 1);
+    playSound("coinPickup");
+    continue;
+   }
+  }
  }
 }
 
@@ -928,7 +961,27 @@ function render() {
   : (roomIsCleared ? img.roomCleared : img.roomBackground);
  ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
 
-  // Player
+ // Coin sprite animation (advance once per frame)
+ if (++coinAnimTimer >= COIN_ANIM_SPEED) { coinAnimTimer = 0; coinAnimFrame = (coinAnimFrame + 1) % COIN_FRAME_COUNT; }
+
+ // Draw coins FIRST so everything renders on top of them
+ coins.forEach(c => {
+  if (img.coinSheet.complete && img.coinSheet.naturalWidth > 0) {
+   const frameW = img.coinSheet.naturalWidth / COIN_FRAME_COUNT;
+   const frameH = img.coinSheet.naturalHeight;
+   const drawSize = 28; // [TWEAK] coin render size on canvas
+   ctx.drawImage(img.coinSheet, coinAnimFrame * frameW, 0, frameW, frameH, c.x - drawSize / 2, c.y - drawSize / 2, drawSize, drawSize);
+  } else {
+   ctx.fillStyle = "#FFD700";
+   ctx.fillRect(c.x, c.y, c.width, c.height);
+  }
+ });
+
+ // Enemies and boss drawn above coins
+ enemies.forEach(e => { ctx.fillStyle = e.color; ctx.fillRect(e.x, e.y, e.width, e.height); });
+ if (boss) renderBoss();
+
+  // Player drawn above coins, enemies and boss
   if (player.attackTimer > 0 && img.playerAttackSheet.complete && img.playerAttackSheet.naturalWidth > 0) {
     const row = PLAYER_ROW[player.facing];
     const drawW = player.width + 28;
@@ -968,26 +1021,6 @@ function render() {
     ctx.fillStyle = player.color;
     ctx.fillRect(player.x, player.y, player.width, player.height);
   }
-
- // Enemies
- enemies.forEach(e => { ctx.fillStyle = e.color; ctx.fillRect(e.x, e.y, e.width, e.height); });
-
- if (boss) renderBoss();
-
- // Coin sprite animation (advance once per frame)
- if (++coinAnimTimer >= COIN_ANIM_SPEED) { coinAnimTimer = 0; coinAnimFrame = (coinAnimFrame + 1) % COIN_FRAME_COUNT; }
-
- coins.forEach(c => {
-  if (img.coinSheet.complete && img.coinSheet.naturalWidth > 0) {
-   const frameW = img.coinSheet.naturalWidth / COIN_FRAME_COUNT;
-   const frameH = img.coinSheet.naturalHeight;
-   const drawSize = 28; // [TWEAK] coin render size on canvas
-   ctx.drawImage(img.coinSheet, coinAnimFrame * frameW, 0, frameW, frameH, c.x - drawSize / 2, c.y - drawSize / 2, drawSize, drawSize);
-  } else {
-   ctx.fillStyle = "#FFD700";
-   ctx.fillRect(c.x, c.y, c.width, c.height);
-  }
- });
 
  // Ranged enemy projectiles
  ctx.fillStyle = "#66ccff";
