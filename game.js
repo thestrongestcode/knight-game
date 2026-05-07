@@ -52,7 +52,7 @@ const SFX = {
  playerAttack:    'Sounds/SwordHit.wav',
  playerHit:       null,
  playerDeath:     'Sounds/PlayerDeath.wav',
- enemyHit:        null,
+ enemyHit:        'Sounds/EnemyHit.wav',
  enemyDeath:      'Sounds/EnemyDeath.wav',
  coinPickup:      'Sounds/CoinCollect.wav',
  roomCleared:     'Sounds/RoomCleared.wav',
@@ -288,27 +288,43 @@ const getChargeCooldown = () => {
 let boss1Count = 0, boss2Count = 0;
 
 // ============================================================
-// BOSS FACTORY — [TWEAK] boss HP/speed/damage scaling per encounter
+// BOSS CONFIG
+// Boss HP is derived from player.damage at spawn time so every
+// encounter takes roughly the same number of hits to clear,
+// regardless of how upgraded the player is.
+//
+// Boss contact/ability damage is scaled from player.maxHealth
+// so it stays threatening no matter how much HP the player has.
 // ============================================================
+
+const BOSS1_TARGET_HITS = 18; // [# of hits to beat boss1]
+const BOSS2_TARGET_HITS = 22; // [# of hits to beat boss2]
+
 function createBoss(bossType) {
- const base = { x: canvas.width / 2 - 60, y: canvas.height / 2 - 200, width: 120, height: 120, type: bossType };
- if (bossType === "boss1") {
-  const n = boss1Count;
-  const hp = Math.floor(800 * Math.pow(4, n)); //boss1 health
-  const spd = Math.min(0.8 + n * 0.55, 5.0);
-  return { ...base, speed: spd, baseSpeed: spd, color: "#8B0000",
-   health: hp, maxHealth: hp,
-   damage: 1.5 + n * 2.5, dashDamage: 0.35 + n * 0.07, aoeDamage: 0.22 + n * 0.05,
-   coinDrop: 30 + n * 20 };
- }
- const n = boss2Count;
- const hp = Math.floor(5000 * Math.pow(3.8, n)); //boss2 health
- const spd = Math.min(1.2 + n * 0.65, 5.5);
- return { ...base, speed: spd, baseSpeed: spd, color: "#4400aa",
-  health: hp, maxHealth: hp,
-  damage: 1.2 + n * 2.0, projectileDamage: 10 + n * 18,
-  rainDamage: 0.6 + n * 0.5, beamDamage: 0.75 + n * 0.10,
-  coinDrop: 45 + n * 30 };
+  const base = { x: canvas.width / 2 - 60, y: canvas.height / 2 - 200, width: 120, height: 120, type: bossType };
+
+  if (bossType === "boss1") {
+    const n = boss1Count;
+    const hp = Math.floor(player.damage * BOSS1_TARGET_HITS);
+    const spd = Math.min(0.8 + n * 0.55, 5.0);
+    return { ...base, speed: spd, baseSpeed: spd, color: "#8B0000",
+      health: hp, maxHealth: hp,
+      damage:     (0.06 + n * 0.015) * player.maxHealth,  // contact dps   [TWEAK]
+      dashDamage: (0.18 + n * 0.04)  * player.maxHealth,  // charge hit    [TWEAK]
+      aoeDamage:  (0.12 + n * 0.025) * player.maxHealth,  // ring hit      [TWEAK]
+      coinDrop: 30 + n * 20 };
+  }
+
+  const n = boss2Count;
+  const hp = Math.floor(player.damage * BOSS2_TARGET_HITS);
+  const spd = Math.min(1.2 + n * 0.65, 5.5);
+  return { ...base, speed: spd, baseSpeed: spd, color: "#4400aa",
+    health: hp, maxHealth: hp,
+    damage:           (0.05 + n * 0.012) * player.maxHealth,  // contact dps   [TWEAK]
+    projectileDamage: (0.10 + n * 0.025) * player.maxHealth,  // orb hit       [TWEAK]
+    rainDamage:       (0.03 + n * 0.008) * player.maxHealth,  // puddle dps    [TWEAK]
+    beamDamage:       (0.22 + n * 0.04)  * player.maxHealth,  // beam hit      [TWEAK]
+    coinDrop: 45 + n * 30 };
 }
 
 // ============================================================
@@ -402,7 +418,7 @@ function advanceRoom() {
   if (bossType === "boss2") boss2Count++;
   bossChargeCooldown = 60;
   boss2BeamCooldown = 180;
-  startBossMusic("Sounds/BossEnter.mp3");;
+  startBossMusic("Sounds/BossEnter.mp3");
  }
 
  player.x = canvas.width / 2.08;
@@ -667,7 +683,7 @@ function updateBoss() {
    } while (Math.sqrt((ex - player.x) ** 2 + (ey - player.y) ** 2) < 150 && ++attempts < 20);
    enemies.push({ x: ex, y: ey, width: 25, height: 25,
     speed: (1.5 + roomNumber * 0.1) * 0.5, color: "#cc4400",
-    health: 20 + roomNumber * 3, type: "common", knockbackVx: 0, knockbackVy: 0 });
+    health: 15 + roomNumber * 3, type: "common", knockbackVx: 0, knockbackVy: 0 });
   }
  }
 
@@ -689,7 +705,7 @@ function updateBoss1() {
   if (--bossChargeCooldown <= 0) {
    const dx = player.x + player.width / 2 - (boss.x + boss.width / 2);
    const dy = player.y + player.height / 2 - (boss.y + boss.height / 2);
-   if (Math.sqrt(dx * dx + dy * dy) < 200) { // close range → AOE instead of charge
+   if (Math.sqrt(dx * dx + dy * dy) < 300) { // close range → AOE instead of charge
     bossAoeState = "expanding"; bossAoeRadius = 0;
     bossAoeCenterX = boss.x + boss.width / 2; bossAoeCenterY = boss.y + boss.height / 2;
     bossAoeDamageDealt = false;
