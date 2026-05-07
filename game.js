@@ -1,3 +1,5 @@
+javascript
+
 // ============================================================
 // CANVAS SETUP
 // ============================================================
@@ -9,11 +11,11 @@ canvas.height = window.innerHeight;
 // ============================================================
 // DEV FLAGS
 // ============================================================
-const DEV_IMMORTAL = false; // [TWEAK] disable death during testing
-const DEV_MODE = false; // [TWEAK] reserved for future dev tools
+const DEV_IMMORTAL = false;
+const DEV_MODE = false;
 
 // ============================================================
-// ASSETS — [TWEAK] add/remove entries here to load new images
+// ASSETS
 // ============================================================
 const assets = {
  roomBackground: "RoomImages/DungeonRoom3.png",
@@ -29,13 +31,11 @@ const assets = {
  menuScreen: "UserInterface/MenuScreen.png",
  shopPanel: "UserInterface/ShopPanel.png",
  coinSheet: "Animations/CoinAnimation1.png",
- 
  playerSheet: "Animations/PlayerWalking.png",
  playerAttackSheet: "Animations/PlayerAttack.png",
  enemyCommonSheet: "Animations/NormalEnemy.png",
 };
 
-// Preload all assets into img{}
 const img = {};
 const imageLoads = Object.entries(assets).map(([key, src]) => {
  img[key] = new Image();
@@ -45,8 +45,6 @@ const imageLoads = Object.entries(assets).map(([key, src]) => {
 
 // ============================================================
 // SOUND SYSTEM
-// [TWEAK] Replace null with a file path like "sfx/swing.mp3" to use real audio.
-//         Leave null to keep the procedural placeholder sound.
 // ============================================================
 const SFX = {
  playerAttack:    'Sounds/SwordHit.wav',
@@ -73,7 +71,6 @@ const SFX = {
  healPickup:      null,
 };
 
-// Preload real audio files so they're ready on first play
 const audioCache = {};
 Object.entries(SFX).forEach(([key, src]) => {
  if (src) {
@@ -83,7 +80,6 @@ Object.entries(SFX).forEach(([key, src]) => {
  }
 });
 
-// Procedural fallback sounds — [TWEAK] adjust freq/duration/type per key
 const sfxFallback = {
  playerAttack:    () => synth(220, 0.08, "sawtooth", 0.18),
  playerHit:       () => synth(120, 0.15, "sawtooth", 0.25),
@@ -109,7 +105,6 @@ const sfxFallback = {
  healPickup:      () => { synth(440, 0.15, "sine", 0.1); synth(660, 0.15, "sine", 0.25); },
 };
 
-// Tiny synth engine — [TWEAK] freq=pitch, dur=seconds, type=waveform, delay=seconds before start
 let audioCtx = null;
 function synth(freq, dur, type = "sine", delay = 0) {
  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -123,14 +118,12 @@ function synth(freq, dur, type = "sine", delay = 0) {
  o.start(t); o.stop(t + dur + 0.05);
 }
 
-// Master play function — uses real file if set, otherwise procedural
 function playSound(key) {
  if (SFX[key]) {
   const a = audioCache[key] || new Audio(SFX[key]);
   a.currentTime = 0;
   a.play().catch(() => {});
  }
- // null entries play nothing — synth fallback removed
 }
 
 let bossMusic = null;
@@ -154,7 +147,7 @@ const isShopRoomNumber = room => room % 5 === 0 && !isBossRoomNumber(room);
 // ============================================================
 // GAME STATE
 // ============================================================
-let gameState = "menu"; // "menu" | "playing" | "dead"
+let gameState = "menu";
 let deathScreenTimer = 0;
 let roomNumber = 1;
 let roomIsCleared = false;
@@ -164,25 +157,25 @@ let shopOpen = false, shopHealMessage = "";
 
 // ============================================================
 // COIN SPRITE ANIMATION
-// [TWEAK] set COIN_FRAME_COUNT to match how many frames are in coinSheet
-// [TWEAK] raise COIN_ANIM_SPEED to slow the spin, lower to speed it up
 // ============================================================
-const COIN_MAGNET_DELAY = 30;    // [TWEAK] frames before magnet activates after room clear (30 = ~0.5s at 60fps)
-const COIN_MAGNET_ACCEL = 0.4;   // [TWEAK] how fast coins accelerate toward player
-const COIN_MAGNET_MAX_SPEED = 12; // [TWEAK] max coin travel speed
+const COIN_MAGNET_DELAY = 30;
+const COIN_MAGNET_ACCEL = 0.4;
+const COIN_MAGNET_MAX_SPEED = 12;
 let coinMagnetTimer = 0;
-const COIN_FRAME_COUNT = 1; // [TWEAK] update when you add more coin frames
-const COIN_ANIM_SPEED = 6; // [TWEAK] game-loop ticks per coin frame
+const COIN_FRAME_COUNT = 1;
+const COIN_ANIM_SPEED = 6;
 let coinAnimFrame = 0, coinAnimTimer = 0;
 
-// Projectile arrays
 const projectiles = [];
 const boss2Projectiles = [];
 
+// ============================================================
+// PLAYER ANIMATION
+// ============================================================
 const PLAYER_FRAME_COUNT = 4;
-const PLAYER_FRAME_W = 300; // width of each frame in pixels
-const PLAYER_FRAME_H = 300; // height of each frame in pixels
-const PLAYER_ANIM_SPEED = 8; // ticks per frame — lower = faster
+const PLAYER_FRAME_W = 300;
+const PLAYER_FRAME_H = 300;
+const PLAYER_ANIM_SPEED = 8;
 let playerAnimFrame = 0;
 let playerAnimTimer = 0;
 let playerIsMoving = false;
@@ -192,10 +185,19 @@ const PLAYER_ROW = { down: 0, left: 1, right: 2, up: 3 };
 const ATTACK_FRAME_COUNT = 3;
 let attackAnimFrame = 0;
 let attackAnimTimer = 0;
-const ATTACK_ANIM_SPEED = 6; // [TWEAK] lower = faster attack animation
+const ATTACK_ANIM_SPEED = 6;
 
 // ============================================================
-// DEV CONTROL PANEL — listens for messages from a dev panel page
+// ENEMY SPRITE ANIMATION
+// [TWEAK] adjust these to match your enemyCommonSheet layout
+// ============================================================
+const ENEMY_FRAME_COUNT = 4;   // [TWEAK] number of frames in the spritesheet row
+const ENEMY_FRAME_W = 300;     // [TWEAK] pixel width of each frame
+const ENEMY_FRAME_H = 300;     // [TWEAK] pixel height of each frame
+const ENEMY_ANIM_SPEED = 8;    // [TWEAK] ticks per frame (lower = faster)
+
+// ============================================================
+// DEV CONTROL PANEL
 // ============================================================
 const devChannel = new BroadcastChannel("dev_controls");
 devChannel.onmessage = ({ data: { type, value } }) => {
@@ -210,14 +212,14 @@ devChannel.onmessage = ({ data: { type, value } }) => {
 };
 
 // ============================================================
-// PLAYER BASE STATS — [TWEAK] change starting values here
+// PLAYER BASE STATS
 // ============================================================
 const playerBase = { damage: 30, maxHealth: 100, speed: 4 };
 
 const player = {
  x: canvas.width / 2.08, y: canvas.height / 1.35,
  width: 50, height: 50,
- speed: 4, maxSpeed: 13, // [TWEAK] maxSpeed caps shop upgrades
+ speed: 4, maxSpeed: 13,
  color: "slategray",
  health: 100, maxHealth: 100,
  facing: "right",
@@ -226,7 +228,7 @@ const player = {
 };
 
 // ============================================================
-// KNOCKBACK CONFIG — [TWEAK] force = launch power, decay = how fast it slows
+// KNOCKBACK CONFIG
 // ============================================================
 const knockbackConfig = {
  speeder: { force: 28, decay: 0.72 },
@@ -243,13 +245,10 @@ let coinCount = 0;
 
 // ============================================================
 // SHOP SYSTEM
-// [TWEAK] shopProximity = how close player must be to open shop
 // ============================================================
 const shopBox = { x: canvas.width / 2 - 25, y: canvas.height / 2 - 25, width: 50, height: 50 };
 const shopProximity = 150;
 
-// [TWEAK] price scaling — mult grows by 0.5 every 5 rooms
-// shop prices
 function getShopPrices() {
  const mult = 1 + (Math.floor(roomNumber / 5) * 0.5);
  return {
@@ -270,16 +269,15 @@ let bossAoeState = "idle", bossAoeRadius = 0;
 let bossAoeCenterX = 0, bossAoeCenterY = 0, bossAoeDamageDealt = false;
 const bossAoeMaxRadius = 300;
 let boss1MinionTimer = 0;
-const BOSS1_MINION_INTERVAL = 800; // [TWEAK] minion spawn rate
+const BOSS1_MINION_INTERVAL = 800;
 
 let boss2ShootTimer = 0, boss2ShootCooldown = 160;
 let boss2RainTimer = 0, boss2RainCooldown = 240;
 let boss2RainWarnings = [];
 let boss2BeamState = "idle", boss2BeamTimer = 0, boss2BeamCooldown = 0;
 let boss2BeamX = 0, boss2BeamY = 0, boss2BeamDamageDealt = false;
-const BOSS2_RAIN_RADIUS = 100; // [TWEAK] radius of rain puddles
+const BOSS2_RAIN_RADIUS = 100;
 
-// [TWEAK] charge cooldown range — enraged halves the wait window
 const getChargeCooldown = () => {
  const enraged = boss && boss.health <= boss.maxHealth * 0.25;
  return Math.floor(Math.random() * (enraged ? 100 : 140)) + (enraged ? 40 : 80);
@@ -287,18 +285,8 @@ const getChargeCooldown = () => {
 
 let boss1Count = 0, boss2Count = 0;
 
-// ============================================================
-// BOSS CONFIG
-// Boss HP is derived from player.damage at spawn time so every
-// encounter takes roughly the same number of hits to clear,
-// regardless of how upgraded the player is.
-//
-// Boss contact/ability damage is scaled from player.maxHealth
-// so it stays threatening no matter how much HP the player has.
-// ============================================================
-
-const BOSS1_TARGET_HITS = 18; // [# of hits to beat boss1]
-const BOSS2_TARGET_HITS = 22; // [# of hits to beat boss2]
+const BOSS1_TARGET_HITS = 18;
+const BOSS2_TARGET_HITS = 22;
 
 function createBoss(bossType) {
   const base = { x: canvas.width / 2 - 60, y: canvas.height / 2 - 200, width: 120, height: 120, type: bossType };
@@ -309,9 +297,9 @@ function createBoss(bossType) {
     const spd = Math.min(0.8 + n * 0.55, 5.0);
     return { ...base, speed: spd, baseSpeed: spd, color: "#8B0000",
       health: hp, maxHealth: hp,
-      damage:     (0.06 + n * 0.015) * player.maxHealth,  // contact dps   [TWEAK]
-      dashDamage: (0.18 + n * 0.04)  * player.maxHealth,  // charge hit    [TWEAK]
-      aoeDamage:  (0.12 + n * 0.025) * player.maxHealth,  // ring hit      [TWEAK]
+      damage:     (0.06 + n * 0.015) * player.maxHealth,
+      dashDamage: (0.18 + n * 0.04)  * player.maxHealth,
+      aoeDamage:  (0.12 + n * 0.025) * player.maxHealth,
       coinDrop: 30 + n * 20 };
   }
 
@@ -320,23 +308,22 @@ function createBoss(bossType) {
   const spd = Math.min(1.2 + n * 0.65, 5.5);
   return { ...base, speed: spd, baseSpeed: spd, color: "#4400aa",
     health: hp, maxHealth: hp,
-    damage:           (0.05 + n * 0.012) * player.maxHealth,  // contact dps   [TWEAK]
-    projectileDamage: (0.10 + n * 0.025) * player.maxHealth,  // orb hit       [TWEAK]
-    rainDamage:       (0.03 + n * 0.008) * player.maxHealth,  // puddle dps    [TWEAK]
-    beamDamage:       (0.22 + n * 0.04)  * player.maxHealth,  // beam hit      [TWEAK]
+    damage:           (0.05 + n * 0.012) * player.maxHealth,
+    projectileDamage: (0.10 + n * 0.025) * player.maxHealth,
+    rainDamage:       (0.03 + n * 0.008) * player.maxHealth,
+    beamDamage:       (0.22 + n * 0.04)  * player.maxHealth,
     coinDrop: 45 + n * 30 };
 }
 
 // ============================================================
 // ENEMY SYSTEM
-// [TWEAK] enemy count caps, speed/hp growth per room below
 // ============================================================
 const enemies = [];
 
 function spawnEnemies() {
  if (isShopRoom || isBossRoom) return;
- const speed = 1.5 + roomNumber * 0.1; // [TWEAK] base enemy speed per room
- const hp = 20 + roomNumber * 5; // [TWEAK] base enemy HP per room
+ const speed = 1.5 + roomNumber * 0.1;
+ const hp = 20 + roomNumber * 5;
  const counts = {
   common: Math.min(3 + Math.floor(roomNumber * 0.4), 4),
   tank: Math.min(Math.floor(roomNumber / 4), 3),
@@ -349,7 +336,6 @@ function spawnEnemies() {
   speeder: { width: 25, height: 25, speedMult: 2, hpMult: 0.3, color: "#ff8800" },
   ranged: { width: 35, height: 35, speedMult: 0.8, hpMult: 0.9, color: "#66ccff" }
  };
- // Pick up to 10 enemies, shuffled
  const list = Object.entries(counts)
   .flatMap(([type, n]) => Array(n).fill(type))
   .sort(() => Math.random() - 0.5)
@@ -362,9 +348,12 @@ function spawnEnemies() {
    ey = Math.random() * (canvas.height - 340) + 180;
   } while (Math.sqrt((ex - player.x) ** 2 + (ey - player.y) ** 2) < 200 && ++attempts < 20);
   const c = configs[type];
-  const enemy = { x: ex, y: ey, width: c.width, height: c.height,
+  const enemy = {
+   x: ex, y: ey, width: c.width, height: c.height,
    speed: speed * c.speedMult, color: c.color, health: hp * c.hpMult,
-   type, knockbackVx: 0, knockbackVy: 0 };
+   type, knockbackVx: 0, knockbackVy: 0,
+   animFrame: 0, animTimer: 0   // ← enemy sprite animation state
+  };
   if (type === "ranged") { enemy.shootTimer = 0; enemy.shootCooldown = 150; }
   enemies.push(enemy);
  });
@@ -406,7 +395,7 @@ function advanceRoom() {
 
  if (isShopRoom) {
   roomIsCleared = true;
-  const heal = player.maxHealth * 0.5; // [TWEAK] how much HP shop rooms restore (fraction)
+  const heal = player.maxHealth * 0.5;
   player.health = Math.min(player.maxHealth, player.health + heal);
   shopHealMessage = "You were healed for " + Math.floor(heal) + " HP!";
   playSound("healPickup");
@@ -455,11 +444,8 @@ function restartGame() {
 // ============================================================
 const keys = {};
 
-// Normalize all keys to lowercase so CapsLock doesn't cause stuck movement
 window.addEventListener("keydown", e => { keys[e.key.toLowerCase()] = true; });
 window.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
-
-// Clear ALL held keys when the window loses focus (Tab, Alt+Tab, etc.)
 window.addEventListener("blur", () => { Object.keys(keys).forEach(k => keys[k] = false); });
 
 window.addEventListener("mousedown", e => { if (e.button === 0) keys["click"] = true; });
@@ -513,7 +499,6 @@ function update() {
  if (gameState === "dead") { if (deathScreenTimer > 0) deathScreenTimer--; return; }
 
  if (!fading) {
-  // All movement checks use lowercase keys
   if (keys["w"] || keys["arrowup"]) player.y -= player.speed;
   if (keys["s"] || keys["arrowdown"]) player.y += player.speed;
   if (keys["a"] || keys["arrowleft"]) player.x -= player.speed;
@@ -534,7 +519,6 @@ function update() {
     playerAnimTimer = 0;
   }
 
-  // [TWEAK] player movement bounds differ in boss rooms vs normal rooms
   if (isBossRoom) {
    player.x = Math.max(160, Math.min(canvas.width - player.width - 160, player.x));
    player.y = Math.max(180, Math.min(canvas.height - player.height - 80, player.y));
@@ -550,18 +534,16 @@ function update() {
    updateAttack();
    updateBoss();
 
-   // Attack animation
-  if (player.attackTimer > 0) {
+   if (player.attackTimer > 0) {
     if (++attackAnimTimer >= ATTACK_ANIM_SPEED) {
       attackAnimTimer = 0;
       attackAnimFrame = Math.min(attackAnimFrame + 1, ATTACK_FRAME_COUNT - 1);
     }
-  } else {
+   } else {
     attackAnimFrame = 0;
     attackAnimTimer = 0;
-  }
+   }
 
-   // Player hit / death sounds
    if (player.health < prevHealth) playSound("playerHit");
 
    if (DEV_IMMORTAL) {
@@ -608,7 +590,6 @@ function update() {
 // ============================================================
 function updateEnemies() {
  enemies.forEach(enemy => {
-  // Apply and decay knockback on both axes
   for (const axis of ["knockbackVx", "knockbackVy"]) {
    if (enemy[axis]) {
     const move = axis === "knockbackVx" ? "x" : "y";
@@ -642,7 +623,6 @@ function updateEnemies() {
   }
 
   if (enemy.type !== "ranged" && rectsOverlap(player, enemy)) {
-   // [TWEAK] melee contact damage per type, scales with room
    const dmg = enemy.type === "tank" ? 1.5 + roomNumber * 0.2
     : enemy.type === "speeder" ? 0.2 + roomNumber * 0.05
     : 0.5 + roomNumber * 0.1;
@@ -650,13 +630,12 @@ function updateEnemies() {
   }
  });
 
- // Ranged enemy projectiles
  for (let i = projectiles.length - 1; i >= 0; i--) {
   const p = projectiles[i];
   p.x += p.vx; p.y += p.vy;
   if (p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) { projectiles.splice(i, 1); continue; }
   if (rectsOverlap(p, player)) {
-   player.health -= 8 + roomNumber * 0.4; // [TWEAK] ranged projectile damage
+   player.health -= 8 + roomNumber * 0.4;
    projectiles.splice(i, 1);
    playSound("projectileHit");
   }
@@ -671,19 +650,22 @@ function updateBoss() {
  if (boss.type === "boss1") updateBoss1();
  if (boss.type === "boss2") updateBoss2();
 
- // Boss1 minion spawning
  if (boss.type === "boss1" && boss.health > 0 && --boss1MinionTimer <= 0) {
   boss1MinionTimer = BOSS1_MINION_INTERVAL;
-  const count = Math.floor(Math.random() * 8) + 8; // [TWEAK] minion wave size (8–15)
+  const count = Math.floor(Math.random() * 8) + 8;
   for (let i = 0; i < count; i++) {
    let ex, ey, attempts = 0;
    do {
     ex = Math.random() * (canvas.width - 550) + 275;
     ey = Math.random() * (canvas.height - 340) + 180;
    } while (Math.sqrt((ex - player.x) ** 2 + (ey - player.y) ** 2) < 150 && ++attempts < 20);
-   enemies.push({ x: ex, y: ey, width: 25, height: 25,
+   enemies.push({
+    x: ex, y: ey, width: 25, height: 25,
     speed: (1.5 + roomNumber * 0.1) * 0.5, color: "#cc4400",
-    health: 15 + roomNumber * 3, type: "common", knockbackVx: 0, knockbackVy: 0 });
+    health: 15 + roomNumber * 3, type: "common",
+    knockbackVx: 0, knockbackVy: 0,
+    animFrame: 0, animTimer: 0   // ← enemy sprite animation state for minions
+   });
   }
  }
 
@@ -691,21 +673,21 @@ function updateBoss() {
   playSound("bossDefeated");
   for (let i = 0; i < boss.coinDrop; i++)
    coins.push({ x: boss.x + Math.random() * boss.width, y: boss.y + Math.random() * boss.height, width: 10, height: 10, vx: 0, vy: 0 });
-  player.health = player.maxHealth; // full heal on boss kill
+  player.health = player.maxHealth;
   resetBossState();
   roomIsCleared = true;
  }
 }
 
 function updateBoss1() {
- const enraged = boss.health <= boss.maxHealth * 0.25; // [TWEAK] enrage threshold (fraction)
+ const enraged = boss.health <= boss.maxHealth * 0.25;
  if (enraged) { boss.speed = boss.baseSpeed * 4; boss.damage = 3; boss.color = "#ff0000"; }
 
  if (bossChargeState === "idle" && bossAoeState === "idle") {
   if (--bossChargeCooldown <= 0) {
    const dx = player.x + player.width / 2 - (boss.x + boss.width / 2);
    const dy = player.y + player.height / 2 - (boss.y + boss.height / 2);
-   if (Math.sqrt(dx * dx + dy * dy) < 300) { // close range → AOE instead of charge
+   if (Math.sqrt(dx * dx + dy * dy) < 300) {
     bossAoeState = "expanding"; bossAoeRadius = 0;
     bossAoeCenterX = boss.x + boss.width / 2; bossAoeCenterY = boss.y + boss.height / 2;
     bossAoeDamageDealt = false;
@@ -728,7 +710,7 @@ function updateBoss1() {
  if (bossChargeState === "dashing") {
   const dx = bossChargeTargetX - boss.x, dy = bossChargeTargetY - boss.y;
   const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-  boss.x += (dx / dist) * 60; boss.y += (dy / dist) * 60; // [TWEAK] dash speed
+  boss.x += (dx / dist) * 60; boss.y += (dy / dist) * 60;
   if (!bossChargeDamageDealt && rectsOverlap(player, boss)) {
    player.health -= player.maxHealth * boss.dashDamage;
    bossChargeDamageDealt = true; bossChargeState = "cooldown"; bossChargeTimer = 40;
@@ -739,7 +721,7 @@ function updateBoss1() {
  if (bossChargeState === "cooldown" && --bossChargeTimer <= 0) bossChargeState = "idle";
 
  if (bossAoeState === "expanding") {
-  bossAoeRadius += 4; // [TWEAK] AOE expand speed
+  bossAoeRadius += 4;
   if (!bossAoeDamageDealt) {
    const px = player.x + player.width / 2, py = player.y + player.height / 2;
    const d = Math.sqrt((px - bossAoeCenterX) ** 2 + (py - bossAoeCenterY) ** 2);
@@ -761,13 +743,13 @@ function updateBoss1() {
 }
 
 function updateBoss2() {
- const enraged = boss.health <= boss.maxHealth * 0.5; // [TWEAK] enrage threshold (fraction)
+ const enraged = boss.health <= boss.maxHealth * 0.5;
  if (enraged) { boss.speed = boss.baseSpeed * 2; boss.damage = 2.5; boss.color = "#7700ff"; }
 
  const dx = player.x + player.width / 2 - (boss.x + boss.width / 2);
  const dy = player.y + player.height / 2 - (boss.y + boss.height / 2);
  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
- const pref = 300; // [TWEAK] preferred distance boss2 tries to maintain
+ const pref = 300;
 
  if (boss2BeamState === "idle" || boss2BeamState === "stunned") {
   if (dist > pref + 50) { boss.x += (dx / dist) * boss.speed; boss.y += (dy / dist) * boss.speed; }
@@ -781,16 +763,16 @@ function updateBoss2() {
  if (boss2BeamState !== "firing" && boss2BeamState !== "windup" && --boss2ShootTimer <= 0) {
   boss2ShootTimer = boss2ShootCooldown;
   const base = Math.atan2(dy, dx);
-  [-0.2, 0, 0.2].forEach(offset => { // [TWEAK] spread angles for triple shot
+  [-0.2, 0, 0.2].forEach(offset => {
    const a = base + offset;
    boss2Projectiles.push({ x: boss.x + boss.width / 2, y: boss.y + boss.height / 2,
-    vx: Math.cos(a) * 5, vy: Math.sin(a) * 5, width: 22, height: 22, type: "normal" }); // [TWEAK] projectile speed (5)
+    vx: Math.cos(a) * 5, vy: Math.sin(a) * 5, width: 22, height: 22, type: "normal" });
   });
  }
 
  if (--boss2RainTimer <= 0) {
   boss2RainTimer = boss2RainCooldown;
-  const count = 5 + Math.floor(roomNumber / 10); // [TWEAK] rain puddle count scales with room
+  const count = 5 + Math.floor(roomNumber / 10);
   for (let i = 0; i < count; i++)
    boss2RainWarnings.push({
     x: Math.random() * (canvas.width - 550) + 275,
@@ -803,14 +785,13 @@ function updateBoss2() {
   if (--boss2RainWarnings[i].timer <= 0) {
    const w = boss2RainWarnings[i];
    boss2Projectiles.push({ x: w.x, y: w.y, vx: 0, vy: 0,
-    width: w.radius * 2, height: w.radius * 2, type: "rain", linger: 40 }); // [TWEAK] rain puddle linger time
+    width: w.radius * 2, height: w.radius * 2, type: "rain", linger: 40 });
    boss2RainWarnings.splice(i, 1);
   }
  }
 
- // Beam windup → firing → stun cycle
  if (boss2BeamState === "idle" && --boss2BeamCooldown <= 0) {
-  boss2BeamState = "windup"; boss2BeamTimer = 45; // [TWEAK] beam windup duration
+  boss2BeamState = "windup"; boss2BeamTimer = 45;
   boss2BeamX = player.x + player.width / 2; boss2BeamY = player.y + player.height / 2;
   boss2BeamDamageDealt = false;
   playSound("bossBeamWindup");
@@ -831,7 +812,7 @@ function updateBoss2() {
    if (proj > 0 && perp < beamW / 2) { player.health -= player.maxHealth * boss.beamDamage; boss2BeamDamageDealt = true; }
   }
   if (--boss2BeamTimer <= 0) {
-   boss2BeamState = "stunned"; boss2BeamTimer = 180; // [TWEAK] stun duration after beam
+   boss2BeamState = "stunned"; boss2BeamTimer = 180;
    boss2BeamCooldown = enraged ? 300 : 480;
   }
  }
@@ -855,15 +836,14 @@ function updateBoss2() {
 // ATTACK UPDATE
 // ============================================================
 function updateAttack() {
- // Update facing based on movement — uses lowercase keys
  if (keys["w"] || keys["arrowup"]) player.facing = "up";
  if (keys["s"] || keys["arrowdown"]) player.facing = "down";
  if (keys["a"] || keys["arrowleft"]) player.facing = "left";
  if (keys["d"] || keys["arrowright"]) player.facing = "right";
 
  if ((keys[" "] || keys["click"]) && player.attackCooldown <= 0) {
-  player.attackTimer = 18; // [TWEAK] attack active hitbox duration (frames)
-  player.attackCooldown = 30; // [TWEAK] attack cooldown (frames)
+  player.attackTimer = 18;
+  player.attackCooldown = 30;
   player.attackHits = [];
   playSound("playerAttack");
  }
@@ -892,7 +872,6 @@ function updateAttack() {
   for (let i = enemies.length - 1; i >= 0; i--) {
    if (enemies[i].health <= 0) {
     playSound("enemyDeath");
-    // [TWEAK] coin drops per enemy type
     const drop = enemies[i].type === "tank" ? 3 : enemies[i].type === "ranged" ? 2 : 1;
     for (let c = 0; c < drop; c++)
      coins.push({ x: enemies[i].x + Math.random() * enemies[i].width, y: enemies[i].y + Math.random() * enemies[i].height, width: 10, height: 10, vx: 0, vy: 0 });
@@ -902,7 +881,6 @@ function updateAttack() {
  }
 }
 
-// [TWEAK] attack hitbox size (hw x hh) and offsets per direction
 function getAttackBox() {
  const hw = 60, hh = 60;
  const dirs = {
@@ -915,13 +893,13 @@ function getAttackBox() {
 }
 
 // ============================================================
-// COIN UPDATE — collection range is 60px
+// COIN UPDATE
 // ============================================================
 function updateCoins() {
  const px = player.x + player.width / 2;
  const py = player.y + player.height / 2;
 
- if (roomIsCleared && coinMagnetTimer < COIN_MAGNET_DELAY) coinMagnetTimer++; // [TWEAK] magnet start delay
+ if (roomIsCleared && coinMagnetTimer < COIN_MAGNET_DELAY) coinMagnetTimer++;
 
  const magnetActive = roomIsCleared && coinMagnetTimer >= COIN_MAGNET_DELAY;
 
@@ -932,17 +910,14 @@ function updateCoins() {
   const dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
   if (magnetActive) {
-   // Steer velocity directly toward player rather than just accelerating
-   // This prevents orbiting by always correcting the angle each frame
-   const targetSpd = Math.min(COIN_MAGNET_MAX_SPEED, COIN_MAGNET_ACCEL * dist); // [TWEAK] speed scales with distance
+   const targetSpd = Math.min(COIN_MAGNET_MAX_SPEED, COIN_MAGNET_ACCEL * dist);
    c.vx = (dx / dist) * targetSpd;
    c.vy = (dy / dist) * targetSpd;
    c.x += c.vx;
    c.y += c.vy;
 
-   // Recalculate dist after moving to catch coins that crossed the threshold this frame
    const newDist = Math.sqrt((px - (c.x + 5)) ** 2 + (py - (c.y + 5)) ** 2);
-   if (newDist < 60) { // [TWEAK] coin pickup radius
+   if (newDist < 60) {
     coinCount++;
     coins.splice(i, 1);
     playSound("coinPickup");
@@ -970,22 +945,19 @@ function render() {
   return;
  }
 
- // Background — chooses cleared variant when room is done
-  const bossType = getBossType(roomNumber);
+ const bossType = getBossType(roomNumber);
  const bgImage = bossType === "boss1" ? (roomIsCleared ? img.bossRoom1Cleared : img.bossRoom1)
   : bossType === "boss2" ? (roomIsCleared ? img.bossRoom2Cleared : img.bossRoom2)
   : (roomIsCleared ? img.roomCleared : img.roomBackground);
  ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
 
- // Coin sprite animation (advance once per frame)
  if (++coinAnimTimer >= COIN_ANIM_SPEED) { coinAnimTimer = 0; coinAnimFrame = (coinAnimFrame + 1) % COIN_FRAME_COUNT; }
 
- // Draw coins FIRST so everything renders on top of them
  coins.forEach(c => {
   if (img.coinSheet.complete && img.coinSheet.naturalWidth > 0) {
    const frameW = img.coinSheet.naturalWidth / COIN_FRAME_COUNT;
    const frameH = img.coinSheet.naturalHeight;
-   const drawSize = 28; // [TWEAK] coin render size on canvas
+   const drawSize = 28;
    ctx.drawImage(img.coinSheet, coinAnimFrame * frameW, 0, frameW, frameH, c.x - drawSize / 2, c.y - drawSize / 2, drawSize, drawSize);
   } else {
    ctx.fillStyle = "#FFD700";
@@ -993,65 +965,89 @@ function render() {
   }
  });
 
- // Enemies and boss drawn above coins
- enemies.forEach(e => { ctx.fillStyle = e.color; ctx.fillRect(e.x, e.y, e.width, e.height); });
- if (boss) renderBoss();
-
-  // Player drawn above coins, enemies and boss
-  if (player.attackTimer > 0 && img.playerAttackSheet.complete && img.playerAttackSheet.naturalWidth > 0) {
-    const row = PLAYER_ROW[player.facing];
-    const drawW = player.width + 28;
-    const drawH = player.height + 28;
-    const centerX = player.x + player.width / 2;
-    const centerY = player.y + player.height / 2;
-    ctx.drawImage(
-      img.playerAttackSheet,
-      attackAnimFrame * PLAYER_FRAME_W,
-      row * PLAYER_FRAME_H,
-      PLAYER_FRAME_W,
-      PLAYER_FRAME_H,
-      Math.round(centerX - drawW / 2),
-      Math.round(centerY - drawH / 2),
-      drawW,
-      drawH
-    );
-  } else if (img.playerSheet.complete && img.playerSheet.naturalWidth > 0) {
-    const row = PLAYER_ROW[player.facing];
-    const frame = playerIsMoving ? playerAnimFrame : 0;
-    const drawW = player.width + 28;
-    const drawH = player.height + 28;
-    const centerX = player.x + player.width / 2;
-    const centerY = player.y + player.height / 2;
-    ctx.drawImage(
-      img.playerSheet,
-      frame * PLAYER_FRAME_W,
-      row * PLAYER_FRAME_H,
-      PLAYER_FRAME_W,
-      PLAYER_FRAME_H,
-      Math.round(centerX - drawW / 2),
-      Math.round(centerY - drawH / 2),
-      drawW,
-      drawH
-    );
-  } else {
-    ctx.fillStyle = player.color;
-    ctx.fillRect(player.x, player.y, player.width, player.height);
+ // ============================================================
+ // ENEMY RENDER — uses enemyCommonSheet sprite for all enemy types
+ // Falls back to colored rectangle if the sheet hasn't loaded.
+ // ============================================================
+ enemies.forEach(e => {
+  // Advance this enemy's animation frame
+  if (++e.animTimer >= ENEMY_ANIM_SPEED) {
+   e.animTimer = 0;
+   e.animFrame = (e.animFrame + 1) % ENEMY_FRAME_COUNT;
   }
 
- // Ranged enemy projectiles
+  if (img.enemyCommonSheet.complete && img.enemyCommonSheet.naturalWidth > 0) {
+   // Scale the draw size to the enemy's collision box + a small padding
+   // [TWEAK] change the + 16 offset to adjust how much bigger the sprite is vs the hitbox
+   const drawSize = Math.max(e.width, e.height) + 16;
+   ctx.drawImage(
+    img.enemyCommonSheet,
+    e.animFrame * ENEMY_FRAME_W, 0,  // source x, y (single row sheet)
+    ENEMY_FRAME_W, ENEMY_FRAME_H,    // source w, h
+    e.x + e.width  / 2 - drawSize / 2,  // dest x (centered on hitbox)
+    e.y + e.height / 2 - drawSize / 2,  // dest y (centered on hitbox)
+    drawSize, drawSize                   // dest w, h
+   );
+  } else {
+   // Fallback rectangle (same as before, so nothing breaks if image fails)
+   ctx.fillStyle = e.color;
+   ctx.fillRect(e.x, e.y, e.width, e.height);
+  }
+ });
+
+ if (boss) renderBoss();
+
+ if (player.attackTimer > 0 && img.playerAttackSheet.complete && img.playerAttackSheet.naturalWidth > 0) {
+  const row = PLAYER_ROW[player.facing];
+  const drawW = player.width + 28;
+  const drawH = player.height + 28;
+  const centerX = player.x + player.width / 2;
+  const centerY = player.y + player.height / 2;
+  ctx.drawImage(
+   img.playerAttackSheet,
+   attackAnimFrame * PLAYER_FRAME_W,
+   row * PLAYER_FRAME_H,
+   PLAYER_FRAME_W,
+   PLAYER_FRAME_H,
+   Math.round(centerX - drawW / 2),
+   Math.round(centerY - drawH / 2),
+   drawW,
+   drawH
+  );
+ } else if (img.playerSheet.complete && img.playerSheet.naturalWidth > 0) {
+  const row = PLAYER_ROW[player.facing];
+  const frame = playerIsMoving ? playerAnimFrame : 0;
+  const drawW = player.width + 28;
+  const drawH = player.height + 28;
+  const centerX = player.x + player.width / 2;
+  const centerY = player.y + player.height / 2;
+  ctx.drawImage(
+   img.playerSheet,
+   frame * PLAYER_FRAME_W,
+   row * PLAYER_FRAME_H,
+   PLAYER_FRAME_W,
+   PLAYER_FRAME_H,
+   Math.round(centerX - drawW / 2),
+   Math.round(centerY - drawH / 2),
+   drawW,
+   drawH
+  );
+ } else {
+  ctx.fillStyle = player.color;
+  ctx.fillRect(player.x, player.y, player.width, player.height);
+ }
+
  ctx.fillStyle = "#66ccff";
  projectiles.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI * 2); ctx.fill(); });
 
  renderHUD();
 
- // Attack hitbox debug overlay
  if (player.attackTimer > 0) {
   const b = getAttackBox();
   ctx.fillStyle = "rgba(255,220,0,0.4)";
   ctx.fillRect(b.x, b.y, b.width, b.height);
  }
 
- // Shop
  if (isShopRoom) {
   ctx.drawImage(img.shopImage, shopBox.x - 100, shopBox.y - 50, 250, 200);
   ctx.save();
@@ -1061,7 +1057,6 @@ function render() {
  }
  if (shopOpen) renderShop();
 
- // Death screen
  if (gameState === "dead") {
   ctx.drawImage(img.deathScreen, 0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "rgba(0,0,0,0.6)";
@@ -1088,14 +1083,12 @@ function renderBoss() {
  ctx.strokeRect(boss.x, boss.y, boss.width, boss.height);
 
  if (boss.type === "boss1") {
-  // Charge telegraph flash
   if (bossChargeState === "telegraphing" && Math.floor(bossTelegraphFlash / 3) % 2 === 0) {
    ctx.fillStyle = "rgba(255,0,0,0.25)";
    ctx.fillRect(bossChargeTargetX - 30, bossChargeTargetY - 30, player.width + 60, player.height + 60);
    ctx.strokeStyle = "rgba(255,0,0,0.9)"; ctx.lineWidth = 2;
    ctx.strokeRect(bossChargeTargetX - 30, bossChargeTargetY - 30, player.width + 60, player.height + 60);
   }
-  // AOE ring
   if (bossAoeState === "expanding" && bossAoeCenterX) {
    const alpha = Math.max(0, 1 - bossAoeRadius / bossAoeMaxRadius);
    ctx.save();
@@ -1108,7 +1101,6 @@ function renderBoss() {
  }
 
  if (boss.type === "boss2") {
-  // Rain warnings
   boss2RainWarnings.forEach(w => {
    const alpha = 0.3 + (1 - w.timer / 30) * 0.5;
    ctx.save();
@@ -1118,7 +1110,6 @@ function renderBoss() {
    ctx.restore();
   });
 
-  // Boss2 projectiles (rain puddles + normal shots)
   boss2Projectiles.forEach(p => {
    ctx.save();
    ctx.beginPath();
@@ -1133,7 +1124,6 @@ function renderBoss() {
    ctx.restore();
   });
 
-  // Beam windup preview
   if (boss2BeamState === "windup" && Math.floor(Date.now() / 80) % 2 === 0) {
    ctx.save();
    ctx.beginPath();
@@ -1143,7 +1133,6 @@ function renderBoss() {
    ctx.restore();
   }
 
-  // Beam firing
   if (boss2BeamState === "firing") {
    const bcx = boss.x + boss.width / 2, bcy = boss.y + boss.height / 2;
    const angle = Math.atan2(boss2BeamY - bcy, boss2BeamX - bcx);
@@ -1155,7 +1144,6 @@ function renderBoss() {
    ctx.restore();
   }
 
-  // Stunned label
   if (boss2BeamState === "stunned") {
    ctx.save();
    ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.font = "bold 16px Courier New";
@@ -1169,7 +1157,6 @@ function renderBoss() {
 // HUD RENDER
 // ============================================================
 function renderHUD() {
- // Health bar
  const bx = 20, by = 20, bw = 250, bh = 28;
  ctx.fillStyle = "#1a0000"; ctx.fillRect(bx, by, bw, bh);
  ctx.fillStyle = "#cc0000"; ctx.fillRect(bx, by, bw * (player.health / player.maxHealth), bh);
@@ -1179,11 +1166,9 @@ function renderHUD() {
  ctx.fillText(Math.ceil(player.health) + " / " + player.maxHealth, bx + bw / 2, by + bh - 8);
  ctx.restore();
 
- // Room & coin counters
  ctx.fillStyle = "#FFF"; ctx.font = "bold 18px Courier New"; ctx.fillText("Room: " + roomNumber, 20, by + bh + 25);
  ctx.fillStyle = "#FFD700"; ctx.font = "bold 16px Courier New"; ctx.fillText("Coins: " + coinCount, 20, by + bh + 50);
 
- // Stat panel (top right) — shows % above base
  const base = playerBase, sx = canvas.width - 220, sy = 20;
  const pct = (val, b) => { const p = Math.round(((val - b) / b) * 100); return p > 0 ? ` (+${p}%)` : ""; };
  ctx.font = "bold 15px Courier New";
@@ -1191,7 +1176,6 @@ function renderHUD() {
  ctx.fillStyle = "#4488ff"; ctx.fillText("HP: " + player.maxHealth + pct(player.maxHealth, base.maxHealth), sx, sy + 45);
  ctx.fillStyle = "#00ff88"; ctx.fillText("SPD: " + player.speed.toFixed(1) + pct(player.speed, base.speed), sx, sy + 70);
 
- // Boss health bar
  if (boss) {
   const bBarW = 400, bBarH = 30;
   const bBarX = canvas.width / 2 - bBarW / 2, bBarY = canvas.height - 80;
@@ -1202,12 +1186,11 @@ function renderHUD() {
   ctx.strokeStyle = ratio <= 0.25 ? "#ffff00" : "#ff0000"; ctx.lineWidth = 2; ctx.strokeRect(bBarX, bBarY, bBarW, bBarH);
   ctx.save();
   ctx.fillStyle = "#FFF"; ctx.font = "bold 14px Courier New"; ctx.textAlign = "center";
-  const label = boss.type === "boss2" ? "ARCHMAGE" : "WARDEN"; // [TWEAK] boss display names
+  const label = boss.type === "boss2" ? "ARCHMAGE" : "WARDEN";
   ctx.fillText((ratio <= 0.25 ? "⚠ ENRAGED ⚠ " : label + " ") + Math.ceil(boss.health) + " / " + boss.maxHealth, canvas.width / 2, bBarY + bBarH - 8);
   ctx.restore();
  }
 
- // Room cleared overlay
  if (roomIsCleared && !isShopRoom) {
   ctx.save();
   ctx.fillStyle = "rgba(255,255,255,0.8)"; ctx.font = "bold 36px Courier New"; ctx.textAlign = "center";
@@ -1252,3 +1235,4 @@ function renderShop() {
 // ============================================================
 function gameLoop() { update(); render(); requestAnimationFrame(gameLoop); }
 Promise.all(imageLoads).then(() => gameLoop());
+Done
