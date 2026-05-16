@@ -16,23 +16,33 @@ const DEV_MODE     = false; // [TWEAK] shows hitbox overlays and other debug vis
 // ASSETS — [TWEAK] add/remove entries here to load new images
 // ============================================================
 const assets = {
-  roomBackground:   "RoomImages/DungeonRoom3.png",
-  roomCleared:      "RoomImages/ClearedDungeonRoom3.png",
-  bossRoom1:        "RoomImages/WardenRoom.png",
-  bossRoom1Cleared: "RoomImages/WardenRoomCleared.png",
-  bossRoom2:        "RoomImages/ArchmageRoom.png",
-  bossRoom2Cleared: "RoomImages/ArchmageRoomCleared.png",
-  healthBarEmpty:   "UserInterface/EmptyHealthBar.png",
-  healthBarFull:    "UserInterface/FullHealthBar.png",
-  shopImage:        "UserInterface/MerchantTable.png",
-  deathScreen:      "UserInterface/DeathScreen.png",
-  menuScreen:       "UserInterface/MenuScreen.png",
-  shopPanel:        "UserInterface/ShopPanel.png",
-  coinSheet:        "Animations/CoinAnimation1.png",
-  playerSheet:      "Animations/PlayerWalking.png",
-  playerAttackSheet:"Animations/PlayerAttack.png",
-  playerSlashSheet: "Animations/PlayerSlash.png",
-  enemyCommonSheet: "Animations/NormalEnemy.png",
+  roomBackground:    "RoomImages/DungeonRoom3.png",
+  roomCleared:       "RoomImages/ClearedDungeonRoom3.png",
+  bossRoom1:         "RoomImages/WardenRoom.png",
+  bossRoom1Cleared:  "RoomImages/WardenRoomCleared.png",
+  bossRoom2:         "RoomImages/ArchmageRoom.png",
+  bossRoom2Cleared:  "RoomImages/ArchmageRoomCleared.png",
+  healthBarEmpty:    "UserInterface/EmptyHealthBar.png",
+  healthBarFull:     "UserInterface/FullHealthBar.png",
+  shopImage:         "UserInterface/MerchantTable.png",
+  deathScreen:       "UserInterface/DeathScreen.png",
+  menuScreen:        "UserInterface/MenuScreen.png",
+  shopPanel:         "UserInterface/ShopPanel.png",
+  coinSheet:         "Animations/CoinAnimation.png",
+  playerSheet:       "Animations/PlayerWalking.png",
+  playerAttackSheet: "Animations/PlayerAttack.png",
+  playerSlashSheet:  "Animations/PlayerSlash.png",
+  enemyCommonSheet:  "Animations/GoblinEnemy.png",
+  enemyTankSheet:    "Animations/OgreEnemy.png", 
+  enemyMageSheet:    "Animations/MageEnemy.png",
+  fireballSheet:     "Animations/Fireball.png",
+  boss2OrbSheet:     "Animations/BossFireball.png",
+  enemySlimeSheet:   "Animations/RedSlime.png",
+  beamHead:          "Animations/BeamHead.png",
+  beamBody:          "Animations/BeamBody.png",
+  enemyMinionSheet:  "Animations/SkeletonMinion.png",
+  boss1Sheet:        "Animations/WardenBoss.png",
+  boss2Sheet:        "Animations/ArchmageBoss.png",
 };
 
 // Preload all assets into img{}
@@ -43,33 +53,47 @@ const imageLoads = Object.entries(assets).map(([key, src]) => {
   return new Promise(res => { img[key].onload = res; img[key].onerror = res; });
 });
 
+// Safe image draw — falls back to a solid color rect if the image failed to load 
+// usage: safeDrawImage(img.menuScreen, 0, 0, w, h, "#111111")
+function safeDrawImage(image, x, y, w, h, fallbackColor = "#111111") {
+  if (image && image.complete && image.naturalWidth > 0) {
+    ctx.drawImage(image, x, y, w, h);
+  } else {
+    ctx.fillStyle = fallbackColor;
+    ctx.fillRect(x, y, w, h);
+  }
+}
+
 // ============================================================
 // SOUND SYSTEM
 // ============================================================
+const BGM_VOLUME = 0.4; // [TWEAK] background music volume
+
 const SFX = {
-  playerAttack:   'Sounds/SwordHit.wav',
-  playerHit:       null,
-  playerDeath:    'Sounds/PlayerDeath.wav',
-  enemyHit:       'Sounds/EnemyHit.wav',
-  enemyDeath:     'Sounds/EnemyDeath.wav',
-  coinPickup:     'Sounds/CoinCollect.wav',
-  roomCleared:    'Sounds/RoomCleared.wav',
-  doorTransition: 'Sounds/RoomFade.wav',
-  shopOpen:       'Sounds/ShopOpen.wav',
-  shopBuy:        'Sounds/ShopBuy.wav',
-  shopFail:       'Sounds/ShopFail.wav',
-  bossEnter:       null,  // one-shot entrance sting
-  bossMusic:      'Sounds/BossEnter.mp3',                    // looping boss BGM — set to your music file
-  bossHit:         'Sounds/EnemyHit.wav',
-  bossCharge:     'Sounds/Charge.wav',
-  bossAoe:        'Sounds/AOE.wav',
-  bossBeamWindup: 'Sounds/BeamWindup.wav',
-  bossBeamFire:   'Sounds/LaserShot.wav',
-  bossDefeated:   'Sounds/BossDefeat.wav',
-  projectileShoot: null,
-  projectileHit:   null,
-  menuStart:       null,
-  healPickup:      null,
+  bgMusic:          null,
+  playerAttack:     'Sounds/SwordHit.wav',
+  playerHit:        null,
+  playerDeath:      'Sounds/PlayerDeath.wav',
+  enemyHit:         'Sounds/EnemyHit.wav',
+  enemyDeath:       'Sounds/EnemyDeath.wav',
+  coinPickup:       'Sounds/CoinCollect.wav',
+  roomCleared:      'Sounds/RoomCleared.wav',
+  doorTransition:   'Sounds/RoomFade.wav',
+  shopOpen:         'Sounds/ShopOpen.wav',
+  shopBuy:          'Sounds/ShopBuy.wav',
+  shopFail:         'Sounds/ShopFail.wav',
+  bossEnter:        null,
+  bossMusic:        'Sounds/BossEnter.mp3',
+  bossHit:          'Sounds/EnemyHit.wav',
+  bossCharge:       'Sounds/Charge.wav',
+  bossAoe:          'Sounds/AOE.wav',
+  bossBeamWindup:   'Sounds/BeamWindup.wav',
+  bossBeamFire:     'Sounds/LaserShot.wav',
+  bossDefeated:     'Sounds/BossDefeat.wav',
+  projectileShoot:  null,
+  projectileHit:    null,
+  menuStart:        null,
+  healPickup:       null,
 };
 
 // Preload real audio files so they're ready on first play
@@ -106,16 +130,42 @@ function playSound(key) {
   }
 }
 
+// ============================================================
+// BACKGROUND MUSIC — loops constantly, pauses during boss music
+// ============================================================
+let bgMusicNode = null;
+
+function startBGMusic() {
+  if (bgMusicNode) return; // already playing
+  if (!SFX.bgMusic) return;
+  bgMusicNode = new Audio(SFX.bgMusic);
+  bgMusicNode.loop   = true;
+  bgMusicNode.volume = BGM_VOLUME; // [TWEAK] BGM_VOLUME constant at top of file
+  bgMusicNode.play().catch(() => {});
+}
+
+function stopBGMusic() {
+  if (!bgMusicNode) return;
+  bgMusicNode.pause();
+  bgMusicNode.currentTime = 0;
+  bgMusicNode = null;
+}
+
 let bossMusicNode = null;
 function startBossMusic() {
   stopBossMusic();
-  if (!SFX.bossMusic) return;             // no BGM assigned → stay silent during fight
+  // Pause BGM while boss music plays
+  if (bgMusicNode) bgMusicNode.pause();
+  if (!SFX.bossMusic) return;
   bossMusicNode = new Audio(SFX.bossMusic);
-  bossMusicNode.loop = true;
+  bossMusicNode.loop   = true;
+  bossMusicNode.volume = BGM_VOLUME; // [TWEAK] boss music shares the same volume constant
   bossMusicNode.play().catch(() => {});
 }
 function stopBossMusic() {
   if (bossMusicNode) { bossMusicNode.pause(); bossMusicNode.currentTime = 0; bossMusicNode = null; }
+  // Resume BGM after boss music ends
+  if (bgMusicNode) bgMusicNode.play().catch(() => {});
 }
 
 // ============================================================
@@ -141,7 +191,7 @@ let shopOpen = false, shopHealMessage = "";
 // [TWEAK] set COIN_FRAME_COUNT to match how many frames are in coinSheet
 // [TWEAK] raise COIN_ANIM_SPEED to slow the spin, lower to speed it up
 // ============================================================
-const COIN_MAGNET_DELAY    = 30;   // [TWEAK] frames before magnet activates after room clear
+const COIN_MAGNET_DELAY    = 20;   // [TWEAK] frames before magnet activates after room clear
 const COIN_MAGNET_ACCEL    = 0.4;  // [TWEAK] how fast coins accelerate toward player
 const COIN_MAGNET_MAX_SPEED = 12;  // [TWEAK] max coin travel speed
 let coinMagnetTimer = 0;
@@ -167,6 +217,24 @@ const ATTACK_FRAME_COUNT = 3;
 let attackAnimFrame = 0;
 let attackAnimTimer = 0;
 const ATTACK_ANIM_SPEED = 6; // [TWEAK] lower = faster attack animation
+
+const TANK_FRAME_COUNT = 4;
+const TANK_ANIM_SPEED  = 12;
+
+const COMMON_FRAME_COUNT = 4;  // [TWEAK] match frame count in NormalEnemy.png
+const COMMON_ANIM_SPEED  = 12; // [TWEAK] ticks per frame
+
+const MAGE_FRAME_COUNT = 4;
+const MAGE_ANIM_SPEED  = 10; // [TWEAK] ticks per frame
+
+const SLIME_FRAME_COUNT = 4;
+const SLIME_ANIM_SPEED  = 8; // [TWEAK] ticks per frame
+
+const BOSS1_FRAME_COUNT = 4; // [TWEAK] update when confirmed
+const BOSS1_ANIM_SPEED  = 25;  // [TWEAK] ticks per frame
+
+const FIREBALL_FRAME_COUNT = 1;  // [TWEAK] match frame count in Fireball.png
+const FIREBALL_ANIM_SPEED  = 6;  // [TWEAK] ticks per frame
 
 // ============================================================
 // SLASH VFX ANIMATION
@@ -244,8 +312,8 @@ const shopProximity = 150;
 function getShopPrices() {
   const mult = 1 + (Math.floor(roomNumber / 5) * 0.5);
   return {
-    damagePrice: Math.floor(5  * mult),
-    healthPrice: Math.floor(10 * mult),
+    damagePrice: Math.floor(9.5 * mult),
+    healthPrice: Math.floor(5 * mult),
     speedPrice:  Math.floor(5  * mult),
   };
 }
@@ -312,10 +380,10 @@ function createBoss(bossType) {
     const spd = Math.min(0.8 + n * 0.55, 5.0);
     return { ...base, speed: spd, baseSpeed: spd, color: "#8B0000", enraged: false,
       health: hp, maxHealth: hp,
-      damage:     (0.06 + n * 0.015) * player.maxHealth,  // contact dps   [TWEAK]
-      dashDamage: (0.18 + n * 0.04)  * player.maxHealth,  // charge damage    [TWEAK]
-      aoeDamage:  (0.35 + n * 0.025) * player.maxHealth,  // aoe damage      [TWEAK]
-      coinDrop: 30 + n * 20 };
+      damage:     (0.06 + n * 0.015) * player.maxHealth,
+      dashDamage: (0.18 + n * 0.04)  * player.maxHealth,
+      aoeDamage:  (0.35 + n * 0.025) * player.maxHealth,
+      coinDrop: 30 + n * 20, animFrame: 0, animTimer: 0, facingLeft: true, moveDir: "down" };
   }
 
   const n   = boss2Count;
@@ -326,8 +394,8 @@ function createBoss(bossType) {
     damage:           (0.05 + n * 0.012) * player.maxHealth,  // contact dps   [TWEAK]
     projectileDamage: (0.10 + n * 0.025) * player.maxHealth,  // orb hit       [TWEAK]
     rainDamage:       (0.03 + n * 0.008) * player.maxHealth,  // puddle dps    [TWEAK]
-    beamDamage:       (0.22 + n * 0.04)  * player.maxHealth,  // beam hit      [TWEAK]
-    coinDrop: 45 + n * 30 };
+    beamDamage:       (0.8)  * player.maxHealth,  // beam hit      [TWEAK]
+    coinDrop: 50 + n * 30 };
 }
 
 // ============================================================
@@ -336,8 +404,7 @@ function createBoss(bossType) {
 // ============================================================
 const enemies = [];
 
-// Stable ID counter — enemies get a unique ID at spawn so
-// attackHits can reference them safely even if others die mid-swing
+// Stable ID counter — enemies get a unique ID at spawn so attackHits can reference them safely even if others die mid-swing
 let nextEnemyId = 0;
 
 function spawnEnemies() {
@@ -361,7 +428,7 @@ function spawnEnemies() {
   const list = Object.entries(counts)
     .flatMap(([type, n]) => Array(n).fill(type))
     .sort(() => Math.random() - 0.5)
-    .slice(0, 10);
+    .slice(0, 15);
 
   list.forEach(type => {
     let ex, ey, attempts = 0;
@@ -374,7 +441,7 @@ function spawnEnemies() {
       id: nextEnemyId++,                             // stable unique ID for hit tracking
       x: ex, y: ey, width: c.width, height: c.height,
       speed: speed * c.speedMult, color: c.color, health: hp * c.hpMult,
-      type, knockbackVx: 0, knockbackVy: 0,
+      type, knockbackVx: 0, knockbackVy: 0, animFrame: 0, animTimer: 0,
     };
     if (type === "ranged") { enemy.shootTimer = 0; enemy.shootCooldown = 150; }
     enemies.push(enemy);
@@ -445,6 +512,7 @@ function advanceRoom() {
 // RESTART
 // ============================================================
 function restartGame() {
+  startBGMusic(); // start looping background music on game start
   Object.assign(player, {
     x: canvas.width / 2.08, y: canvas.height / 1.35,
     health: 100, maxHealth: 100, damage: 30, speed: 4,
@@ -650,6 +718,32 @@ function updateEnemies() {
       }
     }
 
+    if (enemy.type === "tank") {
+      if (++enemy.animTimer >= TANK_ANIM_SPEED) {
+        enemy.animTimer = 0;
+        enemy.animFrame = (enemy.animFrame + 1) % TANK_FRAME_COUNT;
+      }
+    } else if (enemy.type === "common") {
+      if (++enemy.animTimer >= COMMON_ANIM_SPEED) {
+        enemy.animTimer = 0;
+        enemy.animFrame = (enemy.animFrame + 1) % COMMON_FRAME_COUNT;
+      }
+    }
+
+    else if (enemy.type === "ranged") {
+      if (++enemy.animTimer >= MAGE_ANIM_SPEED) {
+        enemy.animTimer = 0;
+        enemy.animFrame = (enemy.animFrame + 1) % MAGE_FRAME_COUNT;
+      }
+    }
+
+    else if (enemy.type === "speeder") {
+      if (++enemy.animTimer >= SLIME_ANIM_SPEED) {
+        enemy.animTimer = 0;
+        enemy.animFrame = (enemy.animFrame + 1) % SLIME_FRAME_COUNT;
+      }
+    }
+
     const dx   = player.x - enemy.x, dy = player.y - enemy.y;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
@@ -665,7 +759,8 @@ function updateEnemies() {
       if (--enemy.shootTimer <= 0) {
         enemy.shootTimer = enemy.shootCooldown;
         projectiles.push({ x: enemy.x + enemy.width / 2, y: enemy.y + enemy.height / 2,
-          vx: (dx / dist) * 4, vy: (dy / dist) * 4, width: 10, height: 10 });
+          vx: (dx / dist) * 4, vy: (dy / dist) * 4, width: 10, height: 10,
+          animFrame: 0, animTimer: 0, angle: Math.atan2(dy, dx) });
         playSound("projectileShoot");
       }
     } else {
@@ -717,7 +812,7 @@ function updateBoss() {
         id: nextEnemyId++,
         x: ex, y: ey, width: 25, height: 25,
         speed: (1.5 + roomNumber * 0.1) * 0.5, color: "#cc4400",
-        health: 15 + roomNumber * 3, type: "common", knockbackVx: 0, knockbackVy: 0,
+        health: 15 + roomNumber * 3, type: "common", isMinion: true, knockbackVx: 0, knockbackVy: 0, animFrame: 0, animTimer: 0,
       });
     }
   }
@@ -733,11 +828,17 @@ function updateBoss() {
 }
 
 function updateBoss1() {
+  // Advance animation every tick
+  if (++boss.animTimer >= BOSS1_ANIM_SPEED) {
+    boss.animTimer = 0;
+    boss.animFrame = (boss.animFrame + 1) % BOSS1_FRAME_COUNT;
+  }
+
   // Enrage: apply multipliers exactly once when threshold is crossed
   if (!boss.enraged && isBossEnraged()) {
     boss.enraged  = true;
     boss.speed    = boss.baseSpeed * 4;
-    boss.damage  *= 2;   // [TWEAK] enrage contact damage multiplier
+    boss.damage  *= 2;
     boss.color    = "#ff0000";
   }
 
@@ -769,7 +870,8 @@ function updateBoss1() {
   if (bossChargeState === "dashing") {
     const dx   = bossChargeTargetX - boss.x, dy = bossChargeTargetY - boss.y;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-    boss.x += (dx / dist) * 60; boss.y += (dy / dist) * 60; // [TWEAK] dash speed
+    boss.x += (dx / dist) * 60; boss.y += (dy / dist) * 60;
+    boss.facingLeft = player.x < (boss.x + boss.width / 2); // [TWEAK] dash speed
     if (!bossChargeDamageDealt && rectsOverlap(player, boss)) {
       player.health -= boss.dashDamage;
       bossChargeDamageDealt = true; bossChargeState = "cooldown"; bossChargeTimer = 40;
@@ -796,6 +898,12 @@ function updateBoss1() {
     const dx   = player.x - boss.x, dy = player.y - boss.y;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
     boss.x += (dx / dist) * boss.speed; boss.y += (dy / dist) * boss.speed;
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      boss.moveDir   = "horizontal";
+      boss.facingLeft = dx < 0;
+    } else {
+      boss.moveDir = dy < 0 ? "up" : "down";
+    }
   }
 
   if (bossChargeState !== "dashing" && rectsOverlap(player, boss)) contactDamage(boss, boss.damage);
@@ -808,6 +916,23 @@ function updateBoss2() {
     boss.speed   = boss.baseSpeed * 2;
     boss.damage *= 2;   // [TWEAK] enrage contact damage multiplier
     boss.color   = "#7700ff";
+  }
+
+  // Advance boss2 sprite animation
+  if (!boss.animFrame) boss.animFrame = 0;
+  if (!boss.animTimer) boss.animTimer = 0;
+  if (++boss.animTimer >= 40 ) { // [TWEAK] ticks per frame
+    boss.animTimer = 0;
+    boss.animFrame = (boss.animFrame + 1) % 4; // [TWEAK] match cols in sheet
+  }
+
+  // Update facing direction for sprite row selection
+  const facingDx = player.x - boss.x, facingDy = player.y - boss.y;
+  if (Math.abs(facingDx) >= Math.abs(facingDy)) {
+    boss.moveDir    = "right";
+    boss.facingLeft = facingDx < 0;
+  } else {
+    boss.moveDir = facingDy < 0 ? "up" : "down";
   }
 
   const dx   = player.x + player.width  / 2 - (boss.x + boss.width  / 2);
@@ -841,7 +966,7 @@ function updateBoss2() {
       boss2RainWarnings.push({
         x: Math.random() * (canvas.width  - 550) + 275,
         y: Math.random() * (canvas.height - 340) + 180,
-        timer: 30, radius: BOSS2_RAIN_RADIUS,
+        timer: 40, radius: BOSS2_RAIN_RADIUS,
       });
   }
 
@@ -856,7 +981,7 @@ function updateBoss2() {
 
   // Beam windup → firing → stun cycle
   if (boss2BeamState === "idle" && --boss2BeamCooldown <= 0) {
-    boss2BeamState        = "windup"; boss2BeamTimer = 45; // [TWEAK] beam windup duration
+    boss2BeamState        = "windup"; boss2BeamTimer = 25; // [TWEAK] beam windup duration
     boss2BeamX            = player.x + player.width  / 2;
     boss2BeamY            = player.y + player.height / 2;
     boss2BeamDamageDealt  = false;
@@ -868,20 +993,40 @@ function updateBoss2() {
   }
   if (boss2BeamState === "firing") {
     if (!boss2BeamDamageDealt) {
-      const beamW  = boss.width * 1.5;
-      const bcx    = boss.x + boss.width / 2, bcy = boss.y + boss.height / 2;
-      const angle  = Math.atan2(boss2BeamY - bcy, boss2BeamX - bcx);
-      const pdx    = player.x + player.width  / 2 - bcx;
-      const pdy    = player.y + player.height / 2 - bcy;
-      const proj   = pdx * Math.cos(angle) + pdy * Math.sin(angle);
-      const perp   = Math.abs(-pdx * Math.sin(angle) + pdy * Math.cos(angle));
-      if (proj > 0 && perp < beamW / 2) { player.health -= boss.beamDamage; boss2BeamDamageDealt = true; }
+      const bcx   = boss.x + boss.width / 2, bcy = boss.y + boss.height / 2;
+      const angle = Math.atan2(boss2BeamY - bcy, boss2BeamX - bcx);
+      const BEAM_HITBOX_W = 80; // [TWEAK] beam hitbox width — set to match visual laser width
+      const BEAM_HITBOX_LEN = 2000;
+      const cos = Math.cos(-angle), sin = Math.sin(-angle);
+      const corners = [
+        [player.x,               player.y              ],
+        [player.x + player.width, player.y              ],
+        [player.x,               player.y + player.height],
+        [player.x + player.width, player.y + player.height],
+      ];
+      const BEAM_HEAD_RADIUS = 120; // [TWEAK] radius of the burst circle at the beam tip (player-side end)
+      // Check circular burst at the beam head sprite position (headW/2 along beam from boss center)
+      const HEAD_OFFSET = 150; // [TWEAK] distance from boss center to burst circle center — match headW/2 in renderBoss
+      const headCX = bcx + Math.cos(angle) * HEAD_OFFSET;
+      const headCY = bcy + Math.sin(angle) * HEAD_OFFSET;
+      const headHit = corners.some(([cx, cy]) => {
+        return Math.sqrt((cx - headCX) ** 2 + (cy - headCY) ** 2) < BEAM_HEAD_RADIUS;
+      });
+      // Check rectangular beam body
+      const bodyHit = corners.some(([cx, cy]) => {
+        const lx = cx - bcx, ly = cy - bcy;
+        const rotX = lx * cos - ly * sin;
+        const rotY = lx * sin + ly * cos;
+        return rotX > 0 && rotX < BEAM_HITBOX_LEN && Math.abs(rotY) < BEAM_HITBOX_W / 2;
+      });
+      if (headHit || bodyHit) { player.health -= boss.beamDamage; boss2BeamDamageDealt = true; }
     }
     if (--boss2BeamTimer <= 0) {
       boss2BeamState    = "stunned"; boss2BeamTimer = 180; // [TWEAK] stun duration after beam
       boss2BeamCooldown = isBossEnraged() ? 300 : 480;
     }
   }
+
   if (boss2BeamState === "stunned" && --boss2BeamTimer <= 0) boss2BeamState = "idle";
 
   for (let i = boss2Projectiles.length - 1; i >= 0; i--) {
@@ -1007,7 +1152,7 @@ function updateCoins() {
 // ============================================================
 function render() {
   if (gameState === "menu") {
-    ctx.drawImage(img.menuScreen, 0, 0, canvas.width, canvas.height);
+    safeDrawImage(img.menuScreen, 0, 0, canvas.width, canvas.height, "#0d0d1a");
     ctx.fillStyle = "rgba(0,0,0,0.55)";
     ctx.fillRect(0, canvas.height - 80, canvas.width, 80);
     const pulse = 0.6 + Math.sin(Date.now() / 500) * 0.4;
@@ -1025,7 +1170,7 @@ function render() {
   const bgImage  = bossType === "boss1" ? (roomIsCleared ? img.bossRoom1Cleared : img.bossRoom1)
                  : bossType === "boss2" ? (roomIsCleared ? img.bossRoom2Cleared : img.bossRoom2)
                  :                        (roomIsCleared ? img.roomCleared       : img.roomBackground);
-  ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+  safeDrawImage(bgImage, 0, 0, canvas.width, canvas.height, "#1a1a1a");
 
   // Coin sprite animation
   if (++coinAnimTimer >= COIN_ANIM_SPEED) { coinAnimTimer = 0; coinAnimFrame = (coinAnimFrame + 1) % COIN_FRAME_COUNT; }
@@ -1044,7 +1189,117 @@ function render() {
   });
 
   // Enemies and boss drawn above coins
-  enemies.forEach(e => { ctx.fillStyle = e.color; ctx.fillRect(e.x, e.y, e.width, e.height); });
+  enemies.forEach(e => {
+    if (e.type === "tank" && img.enemyTankSheet.complete && img.enemyTankSheet.naturalWidth > 0) {
+      const frameW  = img.enemyTankSheet.naturalWidth / TANK_FRAME_COUNT;
+      const frameH  = img.enemyTankSheet.naturalHeight;
+      const drawW   = e.width  + 80;
+      const drawH   = e.height + 80;
+      const centerX = e.x + e.width  / 2;
+      const centerY = e.y + e.height / 2;
+      ctx.save();
+      const facingLeft = player.x < e.x;
+      if (facingLeft) {
+        ctx.translate(centerX, centerY);
+        ctx.scale(-1, 1);
+        ctx.drawImage(img.enemyTankSheet,
+          e.animFrame * frameW, 0, frameW, frameH,
+          -drawW / 2, -drawH / 2, drawW, drawH);
+      } else {
+        ctx.drawImage(img.enemyTankSheet,
+          e.animFrame * frameW, 0, frameW, frameH,
+          centerX - drawW / 2, centerY - drawH / 2, drawW, drawH);
+      }
+      ctx.restore();
+    } else if (e.type === "common" && e.isMinion && img.enemyMinionSheet.complete && img.enemyMinionSheet.naturalWidth > 0) {
+    const frameW  = img.enemyMinionSheet.naturalWidth / SLIME_FRAME_COUNT;
+    const frameH  = img.enemyMinionSheet.naturalHeight;
+    const drawW   = e.width  + 40;
+    const drawH   = e.height + 40;
+    const centerX = e.x + e.width  / 2;
+    const centerY = e.y + e.height / 2;
+    ctx.save();
+    const facingLeft = player.x < e.x;
+    if (facingLeft) {
+      ctx.translate(centerX, centerY);
+      ctx.scale(-1, 1);
+      ctx.drawImage(img.enemyMinionSheet,
+        e.animFrame * frameW, 0, frameW, frameH,
+        -drawW / 2, -drawH / 2, drawW, drawH);
+    } else {
+      ctx.drawImage(img.enemyMinionSheet,
+        e.animFrame * frameW, 0, frameW, frameH,
+        centerX - drawW / 2, centerY - drawH / 2, drawW, drawH);
+    }
+      ctx.restore();
+    } else if (e.type === "common" && img.enemyCommonSheet.complete && img.enemyCommonSheet.naturalWidth > 0) {
+      const frameW  = img.enemyCommonSheet.naturalWidth / COMMON_FRAME_COUNT;
+      const frameH  = img.enemyCommonSheet.naturalHeight;
+      const drawW   = e.width  + 50;
+      const drawH   = e.height + 50;
+      const centerX = e.x + e.width  / 2;
+      const centerY = e.y + e.height / 2;
+      ctx.save();
+      const facingLeft = player.x < e.x;
+      if (facingLeft) {
+        ctx.translate(centerX, centerY);
+        ctx.scale(-1, 1);
+        ctx.drawImage(img.enemyCommonSheet,
+          e.animFrame * frameW, 0, frameW, frameH,
+          -drawW / 2, -drawH / 2, drawW, drawH);
+      } else {
+        ctx.drawImage(img.enemyCommonSheet,
+          e.animFrame * frameW, 0, frameW, frameH,
+          centerX - drawW / 2, centerY - drawH / 2, drawW, drawH);
+      }
+      ctx.restore();
+    } else if (e.type === "ranged" && img.enemyMageSheet.complete && img.enemyMageSheet.naturalWidth > 0) {
+      const frameW  = img.enemyMageSheet.naturalWidth / MAGE_FRAME_COUNT;
+      const frameH  = img.enemyMageSheet.naturalHeight;
+      const drawW   = e.width  + 50;
+      const drawH   = e.height + 50;
+      const centerX = e.x + e.width  / 2;
+      const centerY = e.y + e.height / 2;
+      ctx.save();
+      const facingLeft = player.x < e.x;
+      if (facingLeft) {
+        ctx.translate(centerX, centerY);
+        ctx.scale(-1, 1);
+        ctx.drawImage(img.enemyMageSheet,
+          e.animFrame * frameW, 0, frameW, frameH,
+          -drawW / 2, -drawH / 2, drawW, drawH);
+      } else {
+        ctx.drawImage(img.enemyMageSheet,
+          e.animFrame * frameW, 0, frameW, frameH,
+          centerX - drawW / 2, centerY - drawH / 2, drawW, drawH);
+      }
+      ctx.restore();
+    } else if (e.type === "speeder" && img.enemySlimeSheet.complete && img.enemySlimeSheet.naturalWidth > 0) {
+      const frameW  = img.enemySlimeSheet.naturalWidth / SLIME_FRAME_COUNT;
+      const frameH  = img.enemySlimeSheet.naturalHeight;
+      const drawW   = e.width  + 40;
+      const drawH   = e.height + 40;
+      const centerX = e.x + e.width  / 2;
+      const centerY = e.y + e.height / 2;
+      ctx.save();
+      const facingLeft = player.x < e.x;
+      if (facingLeft) {
+        ctx.translate(centerX, centerY);
+        ctx.scale(-1, 1);
+        ctx.drawImage(img.enemySlimeSheet,
+          e.animFrame * frameW, 0, frameW, frameH,
+          -drawW / 2, -drawH / 2, drawW, drawH);
+      } else {
+        ctx.drawImage(img.enemySlimeSheet,
+          e.animFrame * frameW, 0, frameW, frameH,
+          centerX - drawW / 2, centerY - drawH / 2, drawW, drawH);
+      }
+      ctx.restore();
+    } else {
+      ctx.fillStyle = e.color;
+      ctx.fillRect(e.x, e.y, e.width, e.height);
+    }
+  });
   if (boss) renderBoss();
 
   // Player drawn above everything except UI
@@ -1094,8 +1349,27 @@ function render() {
   }
 
   // Ranged enemy projectiles
-  ctx.fillStyle = "#66ccff";
-  projectiles.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI * 2); ctx.fill(); });
+  projectiles.forEach(p => {
+    if (++p.animTimer >= FIREBALL_ANIM_SPEED) {
+      p.animTimer = 0;
+      p.animFrame = (p.animFrame + 1) % FIREBALL_FRAME_COUNT;
+    }
+    if (img.fireballSheet.complete && img.fireballSheet.naturalWidth > 0) {
+      const frameW  = img.fireballSheet.naturalWidth / FIREBALL_FRAME_COUNT;
+      const frameH  = img.fireballSheet.naturalHeight;
+      const drawSize = 60; // [TWEAK] fireball render size
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.angle);
+      ctx.drawImage(img.fireballSheet,
+        p.animFrame * frameW, 0, frameW, frameH,
+        -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = "#ff6600";
+      ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI * 2); ctx.fill();
+    }
+  });
 
   renderHUD();
 
@@ -1108,7 +1382,7 @@ function render() {
 
   // Shop
   if (isShopRoom) {
-    ctx.drawImage(img.shopImage, shopBox.x - 100, shopBox.y - 50, 250, 200);
+    safeDrawImage(img.shopImage, shopBox.x - 100, shopBox.y - 50, 250, 200, "#2a1a0a");
     ctx.save();
     ctx.fillStyle = "#FFFFFF"; ctx.font = "bold 20px Courier New"; ctx.textAlign = "center";
     ctx.fillText("SHOP", shopBox.x + shopBox.width / 2, shopBox.y - 55);
@@ -1118,7 +1392,7 @@ function render() {
 
   // Death screen
   if (gameState === "dead") {
-    ctx.drawImage(img.deathScreen, 0, 0, canvas.width, canvas.height);
+    safeDrawImage(img.deathScreen, 0, 0, canvas.width, canvas.height, "#1a0000");
     ctx.fillStyle = "rgba(0,0,0,0.6)";
     ctx.fillRect(0, canvas.height - 70, canvas.width, 70);
     ctx.save();
@@ -1138,11 +1412,66 @@ function renderBoss() {
   // isBossEnraged() is the single source of truth — behavior and rendering
   // are now guaranteed to use the same threshold
   const enraged = isBossEnraged();
-  ctx.fillStyle = boss.color;
-  ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
-  ctx.strokeStyle = enraged ? "#ffff00" : "#ff0000";
-  ctx.lineWidth   = enraged ? 5 : 3;
-  ctx.strokeRect(boss.x, boss.y, boss.width, boss.height);
+  if (boss.type === "boss1" && img.boss1Sheet.complete && img.boss1Sheet.naturalWidth > 0) {
+    const cols    = 4; // [TWEAK] columns in sheet
+    const rows    = 4; // [TWEAK] rows in sheet
+    const frameW  = img.boss1Sheet.naturalWidth  / cols;
+    const frameH  = img.boss1Sheet.naturalHeight / rows;
+    const col     = boss.animFrame % cols;
+    // [TWEAK] set these row numbers to match your sprite sheet layout
+    const rowMap  = { horizontal: 0, down: 3, up: 2 };
+    const row     = rowMap[boss.moveDir] ?? 0;
+    const drawW   = boss.width  + 60;
+    const drawH   = boss.height + 60;
+    const centerX = boss.x + boss.width  / 2;
+    const centerY = boss.y + boss.height / 2;
+    ctx.save();
+    const facingLeft = boss.facingLeft;
+    if (facingLeft) {
+      ctx.translate(centerX, centerY);
+      ctx.scale(-1, 1);
+      ctx.drawImage(img.boss1Sheet,
+        col * frameW, row * frameH, frameW, frameH,
+        -drawW / 2, -drawH / 2, drawW, drawH);
+    } else {
+      ctx.drawImage(img.boss1Sheet,
+        col * frameW, row * frameH, frameW, frameH,
+        centerX - drawW / 2, centerY - drawH / 2, drawW, drawH);
+    }
+    ctx.restore(); 
+  } else if (boss.type === "boss2" && img.boss2Sheet && img.boss2Sheet.complete && img.boss2Sheet.naturalWidth > 0) {
+    const cols   = 4; // [TWEAK] columns in boss2 sheet
+    const rows   = 4; // [TWEAK] rows in boss2 sheet
+    const frameW = img.boss2Sheet.naturalWidth  / cols;
+    const frameH = img.boss2Sheet.naturalHeight / rows;
+    const col    = boss.animFrame % cols;
+    // [TWEAK] row mapping — adjust to match your sheet layout
+    const rowMap = { right: 0, left: 1, up: 2, down: 3 };
+    const row    = rowMap[boss.moveDir] ?? 0;
+    const drawW  = boss.width  + 120; // [TWEAK] rendered sprite width
+    const drawH  = boss.height + 120; // [TWEAK] rendered sprite height
+    const centerX = boss.x + boss.width  / 2;
+    const centerY = boss.y + boss.height / 2;
+    ctx.save();
+    if (boss.facingLeft) {
+      ctx.translate(centerX, centerY);
+      ctx.scale(-1, 1);
+      ctx.drawImage(img.boss2Sheet,
+        col * frameW, row * frameH, frameW, frameH,
+        -drawW / 2, -drawH / 2, drawW, drawH);
+    } else {
+      ctx.drawImage(img.boss2Sheet,
+        col * frameW, row * frameH, frameW, frameH,
+        centerX - drawW / 2, centerY - drawH / 2, drawW, drawH);
+    }
+    ctx.restore();
+  } else {
+    ctx.fillStyle = boss.color;
+    ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
+    ctx.strokeStyle = enraged ? "#ffff00" : "#ff0000";
+    ctx.lineWidth   = enraged ? 5 : 3;
+    ctx.strokeRect(boss.x, boss.y, boss.width, boss.height);
+  }
 
   if (boss.type === "boss1") {
     // Charge telegraph flash
@@ -1184,9 +1513,20 @@ function renderBoss() {
         ctx.fillStyle   = "rgba(0,150,255,0.5)"; ctx.fill();
         ctx.strokeStyle = "#66ccff"; ctx.lineWidth = 2; ctx.stroke();
       } else {
-        ctx.arc(p.x, p.y, 14, 0, Math.PI * 2);
-        ctx.fillStyle = "#cc88ff"; ctx.fill();
-      }
+        if (img.boss2OrbSheet.complete && img.boss2OrbSheet.naturalWidth > 0) {
+          const drawSize = 100; // [TWEAK] orb render size
+          const angle = Math.atan2(p.vy, p.vx);
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(angle);
+          ctx.drawImage(img.boss2OrbSheet, 0, 0, img.boss2OrbSheet.naturalWidth, img.boss2OrbSheet.naturalHeight,
+            -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+          ctx.restore();
+        } else {
+          ctx.arc(p.x, p.y, 14, 0, Math.PI * 2);
+          ctx.fillStyle = "#cc88ff"; ctx.fill();
+        }
+      } 
       ctx.restore();
     });
 
@@ -1204,11 +1544,69 @@ function renderBoss() {
     if (boss2BeamState === "firing") {
       const bcx   = boss.x + boss.width / 2, bcy = boss.y + boss.height / 2;
       const angle = Math.atan2(boss2BeamY - bcy, boss2BeamX - bcx);
-      const beamW = boss.width * 1.5;
-      ctx.save(); ctx.translate(bcx, bcy); ctx.rotate(angle);
-      ctx.fillStyle = "rgba(180,80,255,0.3)";  ctx.fillRect(0, -beamW,        2000, beamW * 2);
-      ctx.fillStyle = "rgba(220,150,255,0.9)"; ctx.fillRect(0, -beamW / 3,    2000, (beamW / 3) * 2);
-      ctx.fillStyle = "rgba(255,255,255,0.95)";ctx.fillRect(0, -beamW / 8,    2000, (beamW / 8) * 2);
+      const beamW = 400;    // [TWEAK] beam visual width in pixels
+      const beamLen = 2000; // [TWEAK] how far the beam extends
+      const headW = 480;    // [TWEAK] width of the head sprite
+      ctx.save();
+      ctx.translate(bcx, bcy);
+      ctx.rotate(angle);
+
+      // Draw body first (underneath), from boss edge outward
+      if (img.beamBody.complete && img.beamBody.naturalWidth > 0) {
+        const segW = img.beamBody.naturalWidth;
+        for (let sx = headW; sx < beamLen; sx += segW) {
+          ctx.drawImage(img.beamBody, sx, -beamW / 2, Math.min(segW, beamLen - sx), beamW);
+        }
+      } else {
+        ctx.fillStyle = "rgba(180,80,255,0.6)";
+        ctx.fillRect(headW, -beamW / 2, beamLen, beamW);
+      }
+
+      // Draw head on top at position 0 (boss edge closest to player)
+      if (img.beamHead.complete && img.beamHead.naturalWidth > 0) {
+        ctx.save();
+        ctx.translate(headW / 2, 0);
+        ctx.rotate(Math.PI);
+        ctx.drawImage(img.beamHead, -headW / 2, -beamW / 2, headW, beamW);
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
+    // DEV: beam hitbox overlay — matches the rotated rectangle used for damage
+    if (DEV_MODE && (boss2BeamState === "firing" || boss2BeamState === "windup")) {
+      const bcx   = boss.x + boss.width / 2, bcy = boss.y + boss.height / 2;
+      const angle = Math.atan2(boss2BeamY - bcy, boss2BeamX - bcx);
+      const BEAM_HITBOX_W = 80;   // [TWEAK] keep in sync with updateBoss2
+      const BEAM_HITBOX_LEN = 2000;
+      const BEAM_HEAD_RADIUS = 240; // [TWEAK] keep in sync with updateBoss2
+      ctx.save();
+      ctx.translate(bcx, bcy);
+      ctx.rotate(angle);
+      ctx.fillStyle   = "rgba(255,220,0,0.25)";
+      ctx.strokeStyle = "rgba(255,220,0,0.9)";
+      ctx.lineWidth   = 2;
+      // Beam body rectangle
+      ctx.fillRect(0,   -BEAM_HITBOX_W / 2, BEAM_HITBOX_LEN, BEAM_HITBOX_W);
+      ctx.strokeRect(0, -BEAM_HITBOX_W / 2, BEAM_HITBOX_LEN, BEAM_HITBOX_W);
+      ctx.restore(); // end rotated beam body context before drawing circle in screen space
+
+      // Circular burst at the beam tip — center is boss2BeamX/Y (the player-side end)
+      // [TWEAK] change BEAM_HEAD_RADIUS in updateBoss2 AND here to adjust the circle size
+      const BEAM_HEAD_RADIUS_VIS = 120; // [TWEAK] keep in sync with updateBoss2's BEAM_HEAD_RADIUS
+      ctx.save();
+      ctx.beginPath();
+      // Circle center is HEAD_OFFSET px along the beam from boss center — keep in sync with updateBoss2
+      const HEAD_OFFSET_VIS = 150; // [TWEAK] match HEAD_OFFSET in updateBoss2
+      const headCircleCX = bcx + Math.cos(angle) * HEAD_OFFSET_VIS;
+      const headCircleCY = bcy + Math.sin(angle) * HEAD_OFFSET_VIS;
+      ctx.arc(headCircleCX, headCircleCY, BEAM_HEAD_RADIUS_VIS, 0, Math.PI * 2);
+      ctx.fillStyle   = "rgba(255,220,0,0.25)";
+      ctx.strokeStyle = "rgba(255,220,0,0.9)";
+      ctx.lineWidth   = 2;
+      ctx.fill();
+      ctx.stroke();
       ctx.restore();
     }
 
@@ -1282,7 +1680,7 @@ function renderShop() {
   const { damagePrice, healthPrice, speedPrice } = getShopPrices();
   const pw = 420, ph = 520;
   const px = canvas.width  / 2 - pw / 2, py = canvas.height / 2 - ph / 2;
-  ctx.drawImage(img.shopPanel, px, py, pw, ph);
+  safeDrawImage(img.shopPanel, px, py, pw, ph, "#1a1200");
   ctx.save();
   ctx.textAlign = "center";
   ctx.fillStyle = "#FFD700"; ctx.font = "bold 20px Courier New";
