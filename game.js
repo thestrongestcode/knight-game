@@ -420,7 +420,7 @@ function spawnEnemies() {
   const configs = {
     common:  { width: 40, height: 40, speedMult: 1,   hpMult: 1,   color: "crimson"  },
     tank:    { width: 55, height: 55, speedMult: 0.5,  hpMult: 3,   color: "#8B0000"  },
-    speeder: { width: 25, height: 25, speedMult: 2,   hpMult: 0.3,  color: "#ff8800"  },
+    speeder: { width: 25, height: 25, speedMult: 2,   hpMult: 0.5,  color: "#ff8800"  },
     ranged:  { width: 35, height: 35, speedMult: 0.8, hpMult: 0.9,  color: "#66ccff"  },
   };
 
