@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dev Panel</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0e0e0e;
+      color: #e0e0e0;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      padding: 12px;
+      min-width: 260px;
+    }
+
+    h2 {
+      color: #FFD700;
+      font-size: 15px;
+      margin-bottom: 12px;
+      letter-spacing: 1px;
+      border-bottom: 1px solid #333;
+      padding-bottom: 6px;
+    }
+
+    .section { margin-bottom: 14px; }
+
+    .section-title {
+      color: #888;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    label {
+      width: 80px;
+      color: #aaa;
+      flex-shrink: 0;
+    }
+
+    input[type="number"] {
+      width: 70px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #fff;
+      padding: 3px 6px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      border-radius: 3px;
+    }
+
+    input[type="number"]:focus {
+      outline: none;
+      border-color: #FFD700;
+    }
+
+    button {
+      padding: 3px 10px;
+      background: #222;
+      border: 1px solid #444;
+      color: #ccc;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      cursor: pointer;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    button:hover {
+      background: #333;
+      border-color: #FFD700;
+      color: #FFD700;
+    }
+
+    button.big {
+      width: 100%;
+      padding: 6px;
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+
+    button.gold { border-color: #FFD700; color: #FFD700; }
+    button.gold:hover { background: #1a1500; }
+
+    .status {
+      font-size: 11px;
+      color: #555;
+      margin-top: 10px;
+      border-top: 1px solid #222;
+      padding-top: 8px;
+    }
+
+    .status span { color: #888; }
+  </style>
+</head>
+<body>
+
+<h2>⚔ DEV PANEL</h2>
+
+<div class="section">
+  <div class="section-title">Player Stats</div>
+
+  <div class="row">
+    <label>Health</label>
+    <input type="number" id="health" value="100" min="1">
+    <button onclick="send('setHealth', +el('health').value)">Set</button>
+  </div>
+
+  <div class="row">
+    <label>Max HP</label>
+    <input type="number" id="maxHealth" value="100" min="1">
+    <button onclick="send('setMaxHealth', +el('maxHealth').value)">Set</button>
+  </div>
+
+  <div class="row">
+    <label>Damage</label>
+    <input type="number" id="damage" value="30" min="1">
+    <button onclick="send('setDamage', +el('damage').value)">Set</button>
+  </div>
+
+  <div class="row">
+    <label>Speed</label>
+    <input type="number" id="speed" value="4" min="1" max="13" step="0.5">
+    <button onclick="send('setSpeed', +el('speed').value)">Set</button>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Economy</div>
+  <div class="row">
+    <label>Coins</label>
+    <input type="number" id="coins" value="100" min="0">
+    <button onclick="send('setCoins', +el('coins').value)">Set</button>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Navigation</div>
+  <div class="row">
+    <label>Room</label>
+    <input type="number" id="room" value="1" min="1">
+    <button onclick="send('setRoom', +el('room').value)">Jump</button>
+  </div>
+  <div style="font-size:11px; color:#555; margin-top:2px;">
+    Tip: 10=Boss1, 20=Boss2, 5=Shop
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Quick Actions</div>
+  <button class="big gold" onclick="send('heal')">❤ Full Heal</button>
+  <button class="big gold" onclick="send('godMode')">⚡ God Mode (max everything)</button>
+  <button class="big" onclick="quickDamage()">🗡 Set Damage to 9999</button>
+  <button class="big" onclick="quickShop()">💰 Give 999 Coins</button>
+</div>
+
+<div class="status">
+  BroadcastChannel: <span>dev_controls</span><br>
+  Open game in another tab on the same origin.
+</div>
+
+<script>
+  const channel = new BroadcastChannel("dev_controls");
+
+  function el(name) {
+    return document.getElementById(name);
+  }
+
+  function send(type, value) {
+    channel.postMessage({ type, value });
+    flash(type);
+  }
+
+  function flash(type) {
+    const status = document.querySelector('.status');
+    const orig = status.innerHTML;
+    status.innerHTML = `<span style="color:#FFD700">✓ Sent: ${type}</span>`;
+    setTimeout(() => { status.innerHTML = orig; }, 800);
+  }
+
+  function quickDamage() {
+    el('damage').value = 9999;
+    send('setDamage', 9999);
+  }
+
+  function quickShop() {
+    el('coins').value = 999;
+    send('setCoins', 999);
+  }
+
+  document.querySelectorAll('input').forEach(input => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        input.nextElementSibling.click();
+      }
+    });
+  });
+</script>
+
+</body>
+</html>
